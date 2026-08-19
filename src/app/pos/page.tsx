@@ -23,6 +23,7 @@ export default function POSPage() {
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
 
+  const [activeTab, setActiveTab] = useState<'products' | 'cart'>('products');
   const [productsList, setProductsList] = useState<any[]>(mockProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -190,18 +191,21 @@ export default function POSPage() {
     <div className="flex flex-col h-screen w-screen bg-zinc-100 dark:bg-zinc-950 overflow-hidden text-sm">
       
       {/* POS Top Toolbar */}
-      <div className="flex h-16 items-center justify-between bg-card border-b border-border px-6 select-none shrink-0">
-        <div className="flex items-center gap-4">
+      <div className="flex h-16 items-center justify-between bg-card border-b border-border px-4 sm:px-6 select-none shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/dashboard" className="flex items-center gap-1.5 text-zinc-500 hover:text-foreground font-bold transition-colors">
             <ArrowLeft className="h-4.5 w-4.5" />
-            <span>Dashboard</span>
+            <span className="hidden sm:inline">Dashboard</span>
           </Link>
-          <div className="h-4 w-[1px] bg-border" />
+          <div className="hidden sm:block h-4 w-[1px] bg-border" />
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-3 py-1">
+            <Badge variant="outline" className="hidden sm:inline-flex bg-primary/5 text-primary border-primary/20 font-bold px-3 py-1">
               Active Terminal 01
             </Badge>
-            <span className="text-xs text-muted-foreground">Cashier: <strong className="text-foreground">{user?.name || 'Staff'}</strong></span>
+            <Badge variant="outline" className="sm:hidden bg-primary/5 text-primary border-primary/20 font-bold px-2 py-0.5 text-[10px]">
+              T01
+            </Badge>
+            <span className="hidden md:inline text-xs text-muted-foreground">Cashier: <strong className="text-foreground">{user?.name || 'Staff'}</strong></span>
           </div>
         </div>
 
@@ -218,10 +222,10 @@ export default function POSPage() {
             variant="outline" 
             size="sm" 
             onClick={() => setHeldBillsOpen(true)}
-            className="relative font-semibold flex items-center gap-1.5 h-9 rounded-lg border-zinc-200"
+            className="relative font-semibold flex items-center gap-1.5 h-9 rounded-lg border-zinc-200 px-2.5 sm:px-3"
           >
             <FolderOpen className="h-4 w-4 text-zinc-500" />
-            Held Bills
+            <span className="hidden sm:inline">Held Bills</span>
             {heldBills.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 rounded-full bg-orange-600 text-[10px] font-extrabold text-white flex items-center justify-center">
                 {heldBills.length}
@@ -231,21 +235,50 @@ export default function POSPage() {
         </div>
       </div>
 
+      {/* Mobile Tab Switcher */}
+      <div className="flex border-b border-border bg-card lg:hidden select-none shrink-0">
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`flex-1 py-3 text-center text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'products'
+              ? 'border-primary text-primary bg-primary/5'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Browse Products ({filteredProducts.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('cart')}
+          className={`flex-1 py-3 text-center text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            activeTab === 'cart'
+              ? 'border-primary text-primary bg-primary/5'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Checkout Cart
+          {cart.length > 0 && (
+            <Badge className="h-5 min-w-5 px-1 bg-primary text-primary-foreground flex items-center justify-center rounded-full text-[10px] font-extrabold border-0">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)}
+            </Badge>
+          )}
+        </button>
+      </div>
+
       {/* POS Content Grid */}
       <div className="flex flex-1 min-h-0 w-full overflow-hidden">
         
         {/* Left Side: Product Discovery */}
-        <div className="flex flex-col flex-1 min-w-0 p-4 space-y-4">
+        <div className={`flex flex-col flex-1 min-w-0 p-4 space-y-4 ${activeTab === 'products' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Filters and Scanner simulation row */}
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-3 shrink-0">
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-3 shrink-0">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative col-span-1">
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 id="pos-search"
                 type="text"
-                placeholder="Search Product Name/SKU (F8)"
+                placeholder="Search Product/SKU (F8)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-4 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
@@ -253,11 +286,11 @@ export default function POSPage() {
             </div>
             
             {/* Barcode scanner simulator */}
-            <form onSubmit={handleBarcodeSubmit} className="relative">
+            <form onSubmit={handleBarcodeSubmit} className="relative col-span-1">
               <Barcode className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Scan Barcode / Enter SKU..."
+                placeholder="Barcode/SKU Scan..."
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-4 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
@@ -266,7 +299,7 @@ export default function POSPage() {
             </form>
 
             {/* Warehouse display */}
-            <div className="h-10 rounded-lg border border-border bg-muted/20 px-3 flex items-center justify-between text-xs">
+            <div className="hidden md:flex h-10 rounded-lg border border-border bg-muted/20 px-3 items-center justify-between text-xs col-span-2 md:col-span-1">
               <span className="text-muted-foreground">Location:</span>
               <span className="font-bold text-foreground">Main Warehouse</span>
             </div>
@@ -334,10 +367,31 @@ export default function POSPage() {
               </div>
             )}
           </div>
+
+          {/* Mobile View Cart Sticky Bar */}
+          {cart.length > 0 && (
+            <div className="lg:hidden mt-auto p-3.5 bg-primary text-primary-foreground flex items-center justify-between rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2 select-none shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 bg-white/10 rounded-lg flex items-center justify-center">
+                  <ShoppingCart className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-bold">{cart.reduce((sum, item) => sum + item.quantity, 0)} Items Added</p>
+                  <p className="text-[10px] opacity-90 font-medium">Grand Total: Rs. {totals.grandTotal.toFixed(2)}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab('cart')}
+                className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-black hover:bg-zinc-50 active:scale-95 transition-all cursor-pointer shadow-sm"
+              >
+                View Cart & Pay →
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right Side: Cart Summary Checkout panel */}
-        <div className="w-96 bg-card border-l border-border flex flex-col h-full shrink-0">
+        <div className={`w-full lg:w-96 bg-card lg:border-l border-border flex flex-col h-full shrink-0 ${activeTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Customer selector header */}
           <div className="p-4 border-b border-border/80 space-y-3 shrink-0 select-none">

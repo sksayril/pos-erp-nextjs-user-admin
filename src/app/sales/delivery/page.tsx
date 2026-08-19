@@ -128,7 +128,6 @@ export default function DeliveryPage() {
             columns={columns}
             searchKey="challanNo"
             searchPlaceholder="Search challans..."
-            isLoading={loading}
           />
         </div>
 

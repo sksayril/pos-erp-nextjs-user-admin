@@ -167,6 +167,7 @@ export default function WarehousesPage() {
     },
     { 
       header: 'Status', 
+      accessor: 'quantity',
       render: (row: any) => (
         <Badge variant={row.quantity <= 15 ? 'destructive' : 'success'}>
           {row.quantity <= 15 ? 'Low Stock' : 'Good Stock'}
@@ -226,7 +227,6 @@ export default function WarehousesPage() {
               columns={warehouseColumns}
               searchKey="name"
               searchPlaceholder="Search Godowns..."
-              isLoading={loading}
             />
           ) : (
             /* TAB 2: INVENTORY STOCK MATRIX */
@@ -261,7 +261,6 @@ export default function WarehousesPage() {
                 columns={stockColumns}
                 searchKey="productName"
                 searchPlaceholder="Search SKUs at this site..."
-                isLoading={loading}
                 onEdit={(row: any) => {
                   setSelectedStockItem(row);
                   setStockAdjustmentVal(row.quantity);

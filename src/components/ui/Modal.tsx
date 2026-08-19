@@ -46,16 +46,16 @@ export const Modal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in" 
+        className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity animate-in fade-in" 
         onClick={onClose}
       />
       
       {/* Modal Dialog Box */}
       <div 
-        className={`relative flex flex-col w-full bg-card border border-border text-foreground shadow-2xl rounded-xl overflow-hidden animate-in zoom-in-95 duration-200 ${sizeClasses[size]}`}
+        className={`relative flex flex-col w-full bg-card border border-border text-foreground shadow-2xl rounded-t-2xl sm:rounded-xl overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-none sm:zoom-in-95 duration-250 max-h-[90vh] sm:max-h-[85vh] ${sizeClasses[size]}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 p-5 shrink-0">

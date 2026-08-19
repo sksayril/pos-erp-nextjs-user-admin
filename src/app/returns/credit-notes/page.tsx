@@ -133,7 +133,6 @@ export default function CreditNotesPage() {
             columns={columns}
             searchKey="noteNo"
             searchPlaceholder="Search credit notes..."
-            isLoading={loading}
           />
         </div>
 

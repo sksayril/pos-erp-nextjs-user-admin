@@ -132,7 +132,6 @@ export default function WaybillPage() {
             columns={columns}
             searchKey="ewayBillNo"
             searchPlaceholder="Search E-Waybills..."
-            isLoading={loading}
           />
         </div>
 

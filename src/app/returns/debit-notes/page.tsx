@@ -133,7 +133,6 @@ export default function DebitNotesPage() {
             columns={columns}
             searchKey="noteNo"
             searchPlaceholder="Search debit notes..."
-            isLoading={loading}
           />
         </div>
 
