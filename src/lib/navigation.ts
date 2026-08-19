@@ -65,6 +65,8 @@ export const navigationConfig: NavItem[] = [
       { name: 'Sales List', href: '/sales' },
       { name: 'Create Sale', href: '/sales/create' },
       { name: 'Invoices', href: '/sales/invoices' },
+      { name: 'E-Waybills', href: '/sales/waybill' },
+      { name: 'Delivery Challans', href: '/sales/delivery' },
       { name: 'Sales Payments', href: '/sales/payments' },
       { name: 'Sales History', href: '/sales/history' },
     ]
@@ -104,6 +106,8 @@ export const navigationConfig: NavItem[] = [
     subItems: [
       { name: 'Sales Return', href: '/returns/sales' },
       { name: 'Purchase Return', href: '/returns/purchases' },
+      { name: 'Credit Notes', href: '/returns/credit-notes' },
+      { name: 'Debit Notes', href: '/returns/debit-notes' },
       { name: 'Return History', href: '/returns/history' },
     ]
   },

@@ -139,3 +139,75 @@ export const PermissionModel = mongoose.models.Permission || mongoose.model('Per
     documentation: { type: Boolean, default: false },
   }
 }, { timestamps: true }));
+
+// --- WAYBILL SCHEMA ---
+const WaybillSchema = new Schema({
+  ewayBillNo: { type: String, required: true, unique: true },
+  invoiceNo: { type: String, required: true },
+  customerName: { type: String, required: true },
+  transporterName: { type: String, required: true },
+  vehicleNo: { type: String, required: true },
+  distance: { type: Number, default: 0 },
+  status: { type: String, enum: ['Generated', 'Active', 'Expired', 'Cancelled'], default: 'Generated' },
+  date: { type: String, required: true }
+}, { timestamps: true });
+
+// --- DELIVERY CHALLAN SCHEMA ---
+const DeliverySchema = new Schema({
+  challanNo: { type: String, required: true, unique: true },
+  invoiceNo: { type: String, required: true },
+  customerName: { type: String, required: true },
+  deliveryDate: { type: String, required: true },
+  status: { type: String, enum: ['Shipped', 'Delivered', 'Cancelled', 'Returned'], default: 'Shipped' },
+  shippingAddress: { type: String, required: true },
+  courierName: { type: String }
+}, { timestamps: true });
+
+// --- CREDIT NOTE SCHEMA ---
+const CreditNoteSchema = new Schema({
+  noteNo: { type: String, required: true, unique: true },
+  invoiceNo: { type: String, required: true },
+  customerName: { type: String, required: true },
+  refundAmount: { type: Number, required: true, default: 0 },
+  date: { type: String, required: true },
+  reason: { type: String },
+  status: { type: String, enum: ['Issued', 'Refunded', 'Cancelled'], default: 'Issued' }
+}, { timestamps: true });
+
+// --- DEBIT NOTE SCHEMA ---
+const DebitNoteSchema = new Schema({
+  noteNo: { type: String, required: true, unique: true },
+  purchaseNo: { type: String, required: true },
+  supplierName: { type: String, required: true },
+  debitAmount: { type: Number, required: true, default: 0 },
+  date: { type: String, required: true },
+  reason: { type: String },
+  status: { type: String, enum: ['Issued', 'Adjusted', 'Cancelled'], default: 'Issued' }
+}, { timestamps: true });
+
+// --- WAREHOUSE (GODOWN) SCHEMA ---
+const WarehouseSchema = new Schema({
+  name: { type: String, required: true },
+  code: { type: String, required: true, unique: true },
+  phone: { type: String },
+  email: { type: String },
+  status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+  address: { type: String },
+  managerName: { type: String }
+}, { timestamps: true });
+
+// --- WAREHOUSE STOCK (GODOWN INVENTORY) SCHEMA ---
+const WarehouseStockSchema = new Schema({
+  warehouseId: { type: String, required: true },
+  productId: { type: String, required: true },
+  productName: { type: String, required: true },
+  sku: { type: String, required: true },
+  quantity: { type: Number, required: true, default: 0 }
+}, { timestamps: true });
+
+export const WaybillModel = mongoose.models.Waybill || mongoose.model('Waybill', WaybillSchema);
+export const DeliveryModel = mongoose.models.Delivery || mongoose.model('Delivery', DeliverySchema);
+export const CreditNoteModel = mongoose.models.CreditNote || mongoose.model('CreditNote', CreditNoteSchema);
+export const DebitNoteModel = mongoose.models.DebitNote || mongoose.model('DebitNote', DebitNoteSchema);
+export const WarehouseModel = mongoose.models.Warehouse || mongoose.model('Warehouse', WarehouseSchema);
+export const WarehouseStockModel = mongoose.models.WarehouseStock || mongoose.model('WarehouseStock', WarehouseStockSchema);
