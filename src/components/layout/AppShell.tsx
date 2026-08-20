@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuthStore, usePermissionStore, useUIStore } from '../../lib/store';
 import { useRouter } from 'next/navigation';
-
 import { BottomTabBar } from './BottomTabBar';
 
 interface AppShellProps {
@@ -13,29 +12,38 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ children }: AppShellProps) => {
+  const [mounted, setMounted] = useState(false);
   const { user } = useAuthStore();
   const { loadPermissions } = usePermissionStore();
   const { colorTheme, applyColorTheme } = useUIStore();
   const router = useRouter();
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Apply visual theme color variables on mount / change
   useEffect(() => {
-    applyColorTheme(colorTheme);
-  }, [colorTheme, applyColorTheme]);
+    if (mounted) {
+      applyColorTheme(colorTheme);
+    }
+  }, [mounted, colorTheme, applyColorTheme]);
 
   // Load live permissions from MongoDB
   useEffect(() => {
-    loadPermissions();
-  }, [loadPermissions]);
+    if (mounted) {
+      loadPermissions();
+    }
+  }, [mounted, loadPermissions]);
 
-  // Simple client-side auth guard simulation
+  // Auth guard check
   useEffect(() => {
-    if (!user) {
+    if (mounted && !user) {
       router.push('/login');
     }
-  }, [user, router]);
+  }, [mounted, user, router]);
 
-  if (!user) {
+  if (!mounted || !user) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

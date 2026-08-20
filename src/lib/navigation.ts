@@ -1,7 +1,7 @@
 import { 
   LayoutDashboard, ShoppingCart, Package, ShoppingBag, 
   CreditCard, FileText, ArrowLeftRight, Settings, Users, 
-  BarChart3, FileQuestion, UsersRound, CalendarDays, Wallet 
+  BarChart3, FileQuestion, UsersRound, CalendarDays, Wallet, ShieldCheck, Truck
 } from 'lucide-react';
 import React from 'react';
 
@@ -70,6 +70,11 @@ export const navigationConfig: NavItem[] = [
       { name: 'Sales Payments', href: '/sales/payments' },
       { name: 'Sales History', href: '/sales/history' },
     ]
+  },
+  {
+    name: 'E-Waybill',
+    href: '/sales/waybill',
+    icon: Truck,
   },
   {
     name: 'Expense',
@@ -180,6 +185,16 @@ export const navigationConfig: NavItem[] = [
       { name: 'Printers Setup', href: '/settings/printer' },
       { name: 'Backup Database', href: '/settings/backup' },
       { name: 'System Settings', href: '/settings/system' },
+    ]
+  },
+  {
+    name: 'Users',
+    icon: ShieldCheck,
+    permission: 'users',
+    subItems: [
+      { name: 'Users List', href: '/settings/users' },
+      { name: 'Roles & Groups', href: '/settings/roles' },
+      { name: 'Permissions Matrix', href: '/settings/permissions' },
     ]
   },
   {

@@ -3,19 +3,20 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useUIStore, useAuthStore, useToastStore } from '../../lib/store';
+import { useUIStore, useAuthStore, useToastStore, useSubscriptionStore } from '../../lib/store';
 import { Breadcrumb } from './Breadcrumb';
 import { Button } from '../ui/Button';
-import { UserRole } from '../../lib/types';
 import { 
   Menu, Moon, Sun, Maximize, ShoppingCart, 
-  Printer, Globe, User, LogOut, ChevronDown, Check 
+  Printer, Globe, User, LogOut, ChevronDown, Check,
+  Key, ShieldCheck, Lock, Sparkles 
 } from 'lucide-react';
 
 export const Header = () => {
   const router = useRouter();
   const { toggleSidebar, theme, toggleTheme, language, setLanguage } = useUIStore();
-  const { user, logout, switchRole } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const { isSubscribed, activationKey, setSubscriptionModalOpen } = useSubscriptionStore();
   const { addToast } = useToastStore();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -30,26 +31,11 @@ export const Header = () => {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleLogout = () => {
     logout();
     addToast('info', 'Logged Out', 'Successfully logged out of your session.');
     router.push('/login');
   };
-
-  const handleRoleSwitch = (role: UserRole) => {
-    switchRole(role);
-    addToast('success', 'Role Updated', `Switched workspace permissions to: ${role}`);
-    setProfileDropdownOpen(false);
-  };
-
-  const rolesList: UserRole[] = [
-    'Super Admin', 'Admin', 'Manager', 'Cashier', 
-    'Accountant', 'HR Manager', 'Warehouse Manager'
-  ];
 
   const languages = [
     { code: 'en', label: 'English' },
@@ -76,6 +62,30 @@ export const Header = () => {
       {/* Right side: Actions panel */}
       <div className="flex items-center gap-2 sm:gap-3">
         
+        {/* Subscription Key Badge Trigger */}
+        <button
+          type="button"
+          onClick={() => setSubscriptionModalOpen(true)}
+          className={`hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-bold transition-all border cursor-pointer ${
+            isSubscribed
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+              : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 hover:bg-amber-100 animate-pulse'
+          }`}
+          title={isSubscribed ? `Activation Key: ${activationKey}` : 'Click to subscribe & unlock ERP'}
+        >
+          {isSubscribed ? (
+            <>
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-mono text-[11px]">{activationKey ? activationKey.slice(0, 13) + '...' : 'ERP ACTIVE'}</span>
+            </>
+          ) : (
+            <>
+              <Lock className="h-3.5 w-3.5 text-amber-600" />
+              <span>Unlock ERP (₹5,999)</span>
+            </>
+          )}
+        </button>
+
         {/* POS Fast Access */}
         <Link href="/pos">
           <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-1.5 h-9 rounded-full bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary">
@@ -104,7 +114,7 @@ export const Header = () => {
 
         {/* Print Trigger */}
         <button
-          onClick={handlePrint}
+          onClick={() => window.print()}
           className="hidden md:block rounded-full p-2 text-zinc-500 hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           title="Print Page"
         >
@@ -119,7 +129,6 @@ export const Header = () => {
               setProfileDropdownOpen(false);
             }}
             className="rounded-full p-2 text-zinc-500 hover:bg-muted hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
-            title="Switch Language"
           >
             <Globe className="h-4.5 w-4.5" />
             <span className="text-xs uppercase font-semibold">{language}</span>
@@ -133,7 +142,7 @@ export const Header = () => {
                   onClick={() => {
                     setLanguage(lang.code);
                     setLangDropdownOpen(false);
-                    addToast('info', 'Language Swapped', `Display language configured to: ${lang.label}`);
+                    addToast('info', 'Language Swapped', `Configured to: ${lang.label}`);
                   }}
                   className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg hover:bg-muted text-foreground cursor-pointer"
                 >
@@ -145,7 +154,7 @@ export const Header = () => {
           )}
         </div>
 
-        {/* User Profile and Role Selection Dropdown */}
+        {/* User Profile Dropdown */}
         {user && (
           <div className="relative">
             <button
@@ -166,41 +175,70 @@ export const Header = () => {
             </button>
 
             {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-card p-1 shadow-lg animate-in fade-in slide-in-from-top-1">
+              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card p-1 shadow-xl animate-in fade-in slide-in-from-top-1">
                 {/* Profile header */}
-                <div className="px-3 py-2 border-b border-border/50 mb-1">
-                  <p className="text-xs font-bold text-foreground">{user.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
-                </div>
-                
-                {/* Role Switcher sub-panel */}
-                <div className="px-3 py-1.5">
-                  <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">
-                    Simulation Roles
-                  </p>
-                  <div className="max-h-36 overflow-y-auto space-y-0.5 scrollbar-thin">
-                    {rolesList.map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => handleRoleSwitch(r)}
-                        className="flex w-full items-center justify-between px-2.5 py-1 text-[11px] font-medium rounded-md hover:bg-muted text-foreground cursor-pointer text-left"
-                      >
-                        <span className={user.role === r ? 'text-primary font-bold' : ''}>{r}</span>
-                        {user.role === r && <Check className="h-3 w-3 text-primary" />}
-                      </button>
-                    ))}
+                <div className="px-3 py-3 border-b border-border/50 mb-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground font-bold text-base">
+                      {user.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground leading-none truncate">{user.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate mt-0.5">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold text-center">
+                    🛡 {user.role}
                   </div>
                 </div>
 
+                {/* Activation Key & Subscription Panel inside profile dropdown */}
+                <div className="p-2.5 mx-1 mb-1 rounded-lg bg-muted/40 border border-border/60 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-[11px] font-bold">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Key className="h-3 w-3 text-primary" /> Activation Code:
+                    </span>
+                    <span className={`px-1.5 py-0.2 rounded text-[9px] ${isSubscribed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {isSubscribed ? 'ACTIVE' : 'LOCKED'}
+                    </span>
+                  </div>
+                  {isSubscribed ? (
+                    <div className="font-mono text-[10px] font-bold text-foreground truncate bg-card p-1.5 rounded border border-border">
+                      {activationKey || 'ERP-ACTV-8942-X92F-2026'}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        setSubscriptionModalOpen(true);
+                      }}
+                      className="w-full py-1.5 px-2 rounded bg-amber-500 text-white font-bold text-[10px] flex items-center justify-center gap-1 cursor-pointer hover:bg-amber-600 transition-colors"
+                    >
+                      <Sparkles className="h-3 w-3" /> Subscribe (Rs. 5,999/Yr)
+                    </button>
+                  )}
+                </div>
+
+                {/* Profile link */}
+                <Link
+                  href="/settings/users"
+                  onClick={() => setProfileDropdownOpen(false)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted rounded-lg cursor-pointer"
+                >
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  User Management
+                </Link>
+
                 <div className="border-t border-border/50 my-1" />
                 
-                {/* Logout Button */}
+                {/* Logout */}
                 <button
                   onClick={handleLogout}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
-                  Logout Session
+                  Sign Out
                 </button>
               </div>
             )}

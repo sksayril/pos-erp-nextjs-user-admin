@@ -70,10 +70,64 @@ export const useUIStore = create<UIState>((set, get) => ({
   }
 }));
 
+// --- USER REGISTRY (in-memory, managed by Super Admin) ---
+import { mockUsers } from './mockData';
+
+export interface UserWithPassword extends User {
+  password: string;
+}
+
+// Seed initial user registry from mockData, with default password
+const seedRegistry = (): UserWithPassword[] =>
+  mockUsers.map(u => ({ ...u, password: 'password123' }));
+
+interface UserRegistryState {
+  registry: UserWithPassword[];
+  addRegistryUser: (user: UserWithPassword) => void;
+  updateRegistryUser: (id: string, updates: Partial<UserWithPassword>) => void;
+  deleteRegistryUser: (id: string) => void;
+  findByEmail: (email: string) => UserWithPassword | undefined;
+}
+
+export const useUserRegistry = create<UserRegistryState>((set, get) => ({
+  registry: (() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('erp_user_registry');
+      if (stored) {
+        try { return JSON.parse(stored) as UserWithPassword[]; } catch { /**/ }
+      }
+    }
+    return seedRegistry();
+  })(),
+  addRegistryUser: (user) => {
+    set((s) => {
+      const next = [...s.registry, user];
+      if (typeof window !== 'undefined') localStorage.setItem('erp_user_registry', JSON.stringify(next));
+      return { registry: next };
+    });
+  },
+  updateRegistryUser: (id, updates) => {
+    set((s) => {
+      const next = s.registry.map(u => u.id === id ? { ...u, ...updates } : u);
+      if (typeof window !== 'undefined') localStorage.setItem('erp_user_registry', JSON.stringify(next));
+      return { registry: next };
+    });
+  },
+  deleteRegistryUser: (id) => {
+    set((s) => {
+      const next = s.registry.filter(u => u.id !== id);
+      if (typeof window !== 'undefined') localStorage.setItem('erp_user_registry', JSON.stringify(next));
+      return { registry: next };
+    });
+  },
+  findByEmail: (email) => get().registry.find(u => u.email.toLowerCase() === email.toLowerCase()),
+}));
+
 // --- AUTH STORE ---
 interface AuthState {
   user: User | null;
-  login: (email: string, role: UserRole) => boolean;
+  isLoading: boolean;
+  loginWithCredentials: (email: string, password: string) => { success: boolean; error?: string };
   logout: () => void;
   switchRole: (role: UserRole) => void;
 }
@@ -81,28 +135,30 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: typeof window !== 'undefined' && localStorage.getItem('erp_user')
     ? JSON.parse(localStorage.getItem('erp_user')!)
-    : {
-        id: 'u-1',
-        name: 'Admin',
-        email: 'admin@erp.com',
-        role: 'Super Admin',
-        status: 'Active',
-        warehouseId: 'wh-1'
-      },
-  login: (email, role) => {
-    const defaultUser: User = {
-      id: 'u-1',
-      name: role === 'Super Admin' || role === 'Admin' ? 'Admin' : 'Staff User',
-      email: email || 'admin@erp.com',
-      role: role,
-      status: 'Active',
-      warehouseId: 'wh-1'
+    : null,
+  isLoading: false,
+  loginWithCredentials: (email, password) => {
+    // Pull registry from its own store state
+    const registry = useUserRegistry.getState().registry;
+    const found = registry.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!found) return { success: false, error: 'No account found with this email address.' };
+    if (found.status === 'Inactive') return { success: false, error: 'Your account is inactive. Contact the administrator.' };
+    if (found.password !== password) return { success: false, error: 'Incorrect password. Please try again.' };
+    const userObj: User = {
+      id: found.id,
+      name: found.name,
+      email: found.email,
+      role: found.role,
+      status: found.status,
+      warehouseId: found.warehouseId,
+      phone: found.phone,
+      avatar: found.avatar,
     };
     if (typeof window !== 'undefined') {
-      localStorage.setItem('erp_user', JSON.stringify(defaultUser));
+      localStorage.setItem('erp_user', JSON.stringify(userObj));
     }
-    set({ user: defaultUser });
-    return true;
+    set({ user: userObj });
+    return { success: true };
   },
   logout: () => {
     if (typeof window !== 'undefined') {
@@ -383,6 +439,7 @@ export interface RolePermissions {
   products: boolean;
   purchases: boolean;
   sales: boolean;
+  waybill: boolean;
   expenses: boolean;
   quotations: boolean;
   transfers: boolean;
@@ -394,6 +451,7 @@ export interface RolePermissions {
   settings: boolean;
   distributorUsers: boolean;
   documentation: boolean;
+  users: boolean;
 }
 
 interface PermissionState {
@@ -405,11 +463,11 @@ interface PermissionState {
 
 export const usePermissionStore = create<PermissionState>((set, get) => ({
   permissions: {
-    'Super Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: true, people: true, reports: true, settings: true, distributorUsers: true, documentation: true },
-    'Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: false, people: true, reports: true, settings: true, distributorUsers: true, documentation: true },
-    'HR Manager': { dashboard: true, pos: false, products: false, purchases: false, sales: false, expenses: false, quotations: false, transfers: false, returns: false, accounting: false, hrm: true, people: true, reports: false, settings: false, distributorUsers: false, documentation: true },
-    'Accountant': { dashboard: true, pos: false, products: false, purchases: false, sales: false, expenses: true, quotations: false, transfers: false, returns: false, accounting: true, hrm: false, people: false, reports: true, settings: false, distributorUsers: false, documentation: true },
-    'Cashier': { dashboard: false, pos: true, products: false, purchases: false, sales: true, expenses: false, quotations: false, transfers: false, returns: false, accounting: false, hrm: false, people: false, reports: false, settings: false, distributorUsers: false, documentation: true },
+    'Super Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, waybill: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: true, people: true, reports: true, settings: true, distributorUsers: true, documentation: true, users: true },
+    'Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, waybill: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: false, people: true, reports: true, settings: true, distributorUsers: true, documentation: true, users: true },
+    'HR Manager': { dashboard: true, pos: false, products: false, purchases: false, sales: false, waybill: false, expenses: false, quotations: false, transfers: false, returns: false, accounting: false, hrm: true, people: true, reports: false, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Accountant': { dashboard: true, pos: false, products: false, purchases: false, sales: false, waybill: false, expenses: true, quotations: false, transfers: false, returns: false, accounting: true, hrm: false, people: false, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Cashier': { dashboard: false, pos: true, products: false, purchases: false, sales: true, waybill: true, expenses: false, quotations: false, transfers: false, returns: false, accounting: false, hrm: false, people: false, reports: false, settings: false, distributorUsers: false, documentation: true, users: false },
   },
   loadPermissions: async () => {
     try {
@@ -464,3 +522,77 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
     return roleMap[moduleKey] ?? false;
   },
 }));
+
+// --- SUBSCRIPTION & ACTIVATION STORE ---
+export interface SubscriptionDetails {
+  isSubscribed: boolean;
+  activationKey: string;
+  planName: string;
+  amount: number;
+  expiryDate: string;
+  activatedAt: string;
+}
+
+interface SubscriptionStoreState extends SubscriptionDetails {
+  subscriptionModalOpen: boolean;
+  setSubscriptionModalOpen: (open: boolean) => void;
+  activateSubscription: (data: Partial<SubscriptionDetails>) => void;
+  verifyManualKey: (keyInput: string) => { success: boolean; error?: string };
+  resetSubscription: () => void;
+}
+
+export const useSubscriptionStore = create<SubscriptionStoreState>((set, get) => ({
+  isSubscribed: typeof window !== 'undefined' && localStorage.getItem('erp_is_subscribed') === 'true',
+  activationKey: typeof window !== 'undefined' ? localStorage.getItem('erp_activation_key') || '' : '',
+  planName: '1-Year ERP License',
+  amount: 5999,
+  expiryDate: typeof window !== 'undefined' ? localStorage.getItem('erp_expiry_date') || '' : '',
+  activatedAt: typeof window !== 'undefined' ? localStorage.getItem('erp_activated_at') || '' : '',
+  subscriptionModalOpen: false,
+  setSubscriptionModalOpen: (open) => set({ subscriptionModalOpen: open }),
+  activateSubscription: (data) => {
+    const key = data.activationKey || `ERP-ACTV-${Math.floor(1000 + Math.random() * 9000)}-X92F-${Date.now().toString().slice(-4)}-2026`;
+    const expiry = data.expiryDate || new Date(Date.now() + 365 * 86400 * 1000).toISOString().split('T')[0];
+    const activatedAt = data.activatedAt || new Date().toISOString().split('T')[0];
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('erp_is_subscribed', 'true');
+      localStorage.setItem('erp_activation_key', key);
+      localStorage.setItem('erp_expiry_date', expiry);
+      localStorage.setItem('erp_activated_at', activatedAt);
+    }
+
+    set({
+      isSubscribed: true,
+      activationKey: key,
+      expiryDate: expiry,
+      activatedAt: activatedAt,
+      subscriptionModalOpen: false,
+    });
+  },
+  verifyManualKey: (keyInput) => {
+    const cleanKey = keyInput.trim().toUpperCase();
+    if (!cleanKey) return { success: false, error: 'Please enter a valid Activation Key.' };
+    
+    if (cleanKey.startsWith('ERP-ACTV-') || cleanKey.length >= 8) {
+      get().activateSubscription({ activationKey: cleanKey });
+      return { success: true };
+    }
+    return { success: false, error: 'Invalid Activation Key format. Example: ERP-ACTV-8942-X92F-2026' };
+  },
+  resetSubscription: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('erp_is_subscribed');
+      localStorage.removeItem('erp_activation_key');
+      localStorage.removeItem('erp_expiry_date');
+      localStorage.removeItem('erp_activated_at');
+    }
+    set({
+      isSubscribed: false,
+      activationKey: '',
+      expiryDate: '',
+      activatedAt: '',
+    });
+  }
+}));
+

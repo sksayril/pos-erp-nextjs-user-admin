@@ -10,7 +10,8 @@ export type UserRole =
   | 'Sales Manager' 
   | 'HR Manager' 
   | 'Warehouse Manager' 
-  | 'Distributor';
+  | 'Distributor'
+  | string; // allow custom roles created in DB
 
 export interface Permission {
   id: string;

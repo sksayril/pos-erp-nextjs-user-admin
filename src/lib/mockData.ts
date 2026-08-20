@@ -3,6 +3,19 @@ import {
   Sale, Purchase, Return, Expense, Quotation, Transfer, Account, LedgerEntry, Employee 
 } from './types';
 
+export const mockUsers: User[] = [
+  { id: 'usr-1', name: 'Aryan Sharma', email: 'aryan@erp.com', phone: '9900001111', role: 'Super Admin', status: 'Active', warehouseId: 'wh-1', avatar: '' },
+  { id: 'usr-2', name: 'Priya Mehta', email: 'priya@erp.com', phone: '9900002222', role: 'Admin', status: 'Active', warehouseId: 'wh-1' },
+  { id: 'usr-3', name: 'Rahul Verma', email: 'rahul@erp.com', phone: '9900003333', role: 'Manager', status: 'Active', warehouseId: 'wh-2' },
+  { id: 'usr-4', name: 'Sneha Joshi', email: 'sneha@erp.com', phone: '9900004444', role: 'Cashier', status: 'Active', warehouseId: 'wh-1' },
+  { id: 'usr-5', name: 'Karan Patel', email: 'karan@erp.com', phone: '9900005555', role: 'Accountant', status: 'Active', warehouseId: 'wh-1' },
+  { id: 'usr-6', name: 'Ananya Singh', email: 'ananya@erp.com', phone: '9900006666', role: 'HR Manager', status: 'Active', warehouseId: 'wh-1' },
+  { id: 'usr-7', name: 'Vikram Rao', email: 'vikram@erp.com', phone: '9900007777', role: 'Purchase Manager', status: 'Inactive', warehouseId: 'wh-2' },
+  { id: 'usr-8', name: 'Pooja Nair', email: 'pooja@erp.com', phone: '9900008888', role: 'Sales Manager', status: 'Active', warehouseId: 'wh-1' },
+  { id: 'usr-9', name: 'Rohan Das', email: 'rohan@erp.com', phone: '9900009999', role: 'Warehouse Manager', status: 'Active', warehouseId: 'wh-2' },
+  { id: 'usr-10', name: 'Meena Pillai', email: 'meena@erp.com', phone: '9900010000', role: 'Distributor', status: 'Inactive', warehouseId: 'wh-2' },
+];
+
 export const mockCategories: Category[] = [
   { id: 'cat-1', name: 'Electronics', code: 'ELEC', productCount: 4 },
   { id: 'cat-2', name: 'Beverages', code: 'BEV', productCount: 3 },

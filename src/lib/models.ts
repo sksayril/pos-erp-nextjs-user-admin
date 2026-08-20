@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import crypto from 'crypto';
 
 // --- PRODUCT SCHEMA ---
 const ProductSchema = new Schema({
@@ -137,8 +138,44 @@ export const PermissionModel = mongoose.models.Permission || mongoose.model('Per
     settings: { type: Boolean, default: false },
     distributorUsers: { type: Boolean, default: false },
     documentation: { type: Boolean, default: false },
+    users: { type: Boolean, default: false },
   }
 }, { timestamps: true }));
+
+// --- USER ACCOUNT SCHEMA (for login authentication) ---
+const UserAccountSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  passwordHash: { type: String, required: true },
+  role: { type: String, required: true, default: 'Cashier' },
+  status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+  warehouseId: { type: String, default: 'wh-1' },
+  phone: { type: String },
+  avatar: { type: String },
+  lastLogin: { type: Date },
+  createdBy: { type: String }, // ID of the superadmin who created this user
+}, { timestamps: true });
+
+// Helper static methods for password hashing (using Node crypto — no extra deps)
+UserAccountSchema.statics.hashPassword = function(plain: string): string {
+  return crypto.createHash('sha256').update(plain + 'erp_salt_2026').digest('hex');
+};
+UserAccountSchema.statics.verifyPassword = function(plain: string, hash: string): boolean {
+  const computed = crypto.createHash('sha256').update(plain + 'erp_salt_2026').digest('hex');
+  return computed === hash;
+};
+
+export const UserAccountModel = mongoose.models.UserAccount || mongoose.model('UserAccount', UserAccountSchema);
+
+// --- ROLE SCHEMA (custom roles created by superadmin) ---
+const RoleSchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  description: { type: String },
+  isSystem: { type: Boolean, default: false }, // System roles cannot be deleted
+  createdBy: { type: String },
+}, { timestamps: true });
+
+export const RoleModel = mongoose.models.Role || mongoose.model('Role', RoleSchema);
 
 // --- WAYBILL SCHEMA ---
 const WaybillSchema = new Schema({
