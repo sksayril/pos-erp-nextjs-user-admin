@@ -9,6 +9,8 @@ import { SubscriptionModal } from '../subscription/SubscriptionModal';
 import { Button } from '../ui/Button';
 import { ChevronDown, ChevronRight, Menu, X, Lock, Key, Sparkles, ShieldCheck } from 'lucide-react';
 
+import { useTranslation } from '../../lib/i18n';
+
 const permissionMap: Record<string, string> = {
   'Dashboard': 'dashboard',
   'POS': 'pos',
@@ -40,6 +42,7 @@ export const Sidebar = () => {
   const { user } = useAuthStore();
   const { hasPermission } = usePermissionStore();
   const { isSubscribed, activationKey, setSubscriptionModalOpen } = useSubscriptionStore();
+  const { t } = useTranslation();
   
   const role = user?.role || 'Super Admin';
 
@@ -87,6 +90,7 @@ export const Sidebar = () => {
               <Link
                 href={isLocked ? '#' : (item.href || (hasSubItems ? item.subItems![0].href : '#'))}
                 onClick={(e) => handleLockedClick(e, item.name)}
+                title={t(item.name)}
                 className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
                   isActive
                     ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
@@ -124,12 +128,12 @@ export const Sidebar = () => {
                 >
                   <div className="flex items-center gap-3">
                     <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-primary' : 'text-zinc-500 group-hover:text-primary'}`} />
-                    <span>{item.name}</span>
+                    <span>{t(item.name)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {isLocked ? (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                        <Lock className="h-2.5 w-2.5" /> Lock
+                        <Lock className="h-2.5 w-2.5" /> {t('Lock')}
                       </span>
                     ) : isExpanded ? (
                       <ChevronDown className="h-4 w-4 text-zinc-500 group-hover:text-primary" />
@@ -153,7 +157,7 @@ export const Sidebar = () => {
                               : 'text-zinc-650 dark:text-zinc-400 hover:text-primary hover:bg-primary/5 hover:pl-4'
                           }`}
                         >
-                          {sub.name}
+                          {t(sub.name)}
                         </Link>
                       );
                     })}
@@ -172,11 +176,11 @@ export const Sidebar = () => {
               >
                 <div className="flex items-center gap-3">
                   <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-current' : 'text-zinc-500 hover:text-primary'}`} />
-                  <span>{item.name}</span>
+                  <span>{t(item.name)}</span>
                 </div>
                 {isLocked && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                    <Lock className="h-2.5 w-2.5" /> Lock
+                    <Lock className="h-2.5 w-2.5" /> {t('Lock')}
                   </span>
                 )}
               </Link>

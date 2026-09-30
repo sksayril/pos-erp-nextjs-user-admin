@@ -31,7 +31,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   sidebarOpen: false,
   sidebarCollapsed: false,
   theme: 'light',
-  language: 'en',
+  language: typeof window !== 'undefined' && localStorage.getItem('erp_language')
+    ? (localStorage.getItem('erp_language') as string)
+    : 'en',
   colorTheme: typeof window !== 'undefined' && localStorage.getItem('erp_color_theme')
     ? (localStorage.getItem('erp_color_theme') as ColorTheme)
     : 'purple',
@@ -51,7 +53,13 @@ export const useUIStore = create<UIState>((set, get) => ({
     }
     return { theme: newTheme };
   }),
-  setLanguage: (lang) => set({ language: lang }),
+  setLanguage: (lang) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('erp_language', lang);
+      document.documentElement.lang = lang;
+    }
+    set({ language: lang });
+  },
   setColorTheme: (themeName) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('erp_color_theme', themeName);
@@ -83,9 +91,11 @@ const seedRegistry = (): UserWithPassword[] =>
 
 interface UserRegistryState {
   registry: UserWithPassword[];
-  addRegistryUser: (user: UserWithPassword) => void;
-  updateRegistryUser: (id: string, updates: Partial<UserWithPassword>) => void;
-  deleteRegistryUser: (id: string) => void;
+  isLoading: boolean;
+  loadUsersFromDB: () => Promise<void>;
+  addRegistryUser: (user: UserWithPassword) => Promise<void>;
+  updateRegistryUser: (id: string, updates: Partial<UserWithPassword>) => Promise<void>;
+  deleteRegistryUser: (id: string) => Promise<void>;
   findByEmail: (email: string) => UserWithPassword | undefined;
 }
 
@@ -99,26 +109,76 @@ export const useUserRegistry = create<UserRegistryState>((set, get) => ({
     }
     return seedRegistry();
   })(),
-  addRegistryUser: (user) => {
+  isLoading: false,
+  loadUsersFromDB: async () => {
+    try {
+      set({ isLoading: true });
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const users = await res.json();
+        if (Array.isArray(users) && users.length > 0) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('erp_user_registry', JSON.stringify(users));
+          }
+          set({ registry: users });
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load dynamic users from MongoDB:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  addRegistryUser: async (user) => {
+    // 1. Optimistic state update
     set((s) => {
-      const next = [...s.registry, user];
+      const next = [user, ...s.registry.filter(u => u.id !== user.id && u.email !== user.email)];
       if (typeof window !== 'undefined') localStorage.setItem('erp_user_registry', JSON.stringify(next));
       return { registry: next };
     });
+
+    // 2. Persist to MongoDB
+    try {
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+      });
+    } catch (err) {
+      console.warn('MongoDB add user API sync warning:', err);
+    }
   },
-  updateRegistryUser: (id, updates) => {
+  updateRegistryUser: async (id, updates) => {
     set((s) => {
       const next = s.registry.map(u => u.id === id ? { ...u, ...updates } : u);
       if (typeof window !== 'undefined') localStorage.setItem('erp_user_registry', JSON.stringify(next));
       return { registry: next };
     });
+
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates })
+      });
+    } catch (err) {
+      console.warn('MongoDB update user API sync warning:', err);
+    }
   },
-  deleteRegistryUser: (id) => {
+  deleteRegistryUser: async (id) => {
     set((s) => {
       const next = s.registry.filter(u => u.id !== id);
       if (typeof window !== 'undefined') localStorage.setItem('erp_user_registry', JSON.stringify(next));
       return { registry: next };
     });
+
+    try {
+      await fetch(`/api/users?id=${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.warn('MongoDB delete user API sync warning:', err);
+    }
   },
   findByEmail: (email) => get().registry.find(u => u.email.toLowerCase() === email.toLowerCase()),
 }));
@@ -127,7 +187,7 @@ export const useUserRegistry = create<UserRegistryState>((set, get) => ({
 interface AuthState {
   user: User | null;
   isLoading: boolean;
-  loginWithCredentials: (email: string, password: string) => { success: boolean; error?: string };
+  loginWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
 }
@@ -137,13 +197,40 @@ export const useAuthStore = create<AuthState>((set) => ({
     ? JSON.parse(localStorage.getItem('erp_user')!)
     : null,
   isLoading: false,
-  loginWithCredentials: (email, password) => {
-    // Pull registry from its own store state
+  loginWithCredentials: async (email, password) => {
+    // 1. Try dynamic MongoDB Login API
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success && data.user) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('erp_user', JSON.stringify(data.user));
+          if (data.subscription?.isSubscribed) {
+            localStorage.setItem('erp_is_subscribed', 'true');
+            if (data.subscription.activationKey) localStorage.setItem('erp_activation_key', data.subscription.activationKey);
+          }
+        }
+        set({ user: data.user });
+        return { success: true };
+      } else if (res.status === 401 || res.status === 403 || res.status === 404) {
+        return { success: false, error: data.error || 'Authentication failed.' };
+      }
+    } catch (apiErr) {
+      console.warn('MongoDB login API network error, falling back to cached registry:', apiErr);
+    }
+
+    // 2. Fallback to local user registry if database call fails
     const registry = useUserRegistry.getState().registry;
     const found = registry.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!found) return { success: false, error: 'No account found with this email address.' };
     if (found.status === 'Inactive') return { success: false, error: 'Your account is inactive. Contact the administrator.' };
     if (found.password !== password) return { success: false, error: 'Incorrect password. Please try again.' };
+    
     const userObj: User = {
       id: found.id,
       name: found.name,
@@ -464,10 +551,15 @@ interface PermissionState {
 export const usePermissionStore = create<PermissionState>((set, get) => ({
   permissions: {
     'Super Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, waybill: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: true, people: true, reports: true, settings: true, distributorUsers: true, documentation: true, users: true },
-    'Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, waybill: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: false, people: true, reports: true, settings: true, distributorUsers: true, documentation: true, users: true },
+    'Admin': { dashboard: true, pos: true, products: true, purchases: true, sales: true, waybill: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: true, hrm: true, people: true, reports: true, settings: true, distributorUsers: true, documentation: true, users: true },
+    'Manager': { dashboard: true, pos: true, products: true, purchases: true, sales: true, waybill: true, expenses: true, quotations: true, transfers: true, returns: true, accounting: false, hrm: true, people: true, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
     'HR Manager': { dashboard: true, pos: false, products: false, purchases: false, sales: false, waybill: false, expenses: false, quotations: false, transfers: false, returns: false, accounting: false, hrm: true, people: true, reports: false, settings: false, distributorUsers: false, documentation: true, users: false },
-    'Accountant': { dashboard: true, pos: false, products: false, purchases: false, sales: false, waybill: false, expenses: true, quotations: false, transfers: false, returns: false, accounting: true, hrm: false, people: false, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
-    'Cashier': { dashboard: false, pos: true, products: false, purchases: false, sales: true, waybill: true, expenses: false, quotations: false, transfers: false, returns: false, accounting: false, hrm: false, people: false, reports: false, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Accountant': { dashboard: true, pos: false, products: false, purchases: false, sales: true, waybill: false, expenses: true, quotations: false, transfers: false, returns: false, accounting: true, hrm: false, people: true, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Cashier': { dashboard: false, pos: true, products: false, purchases: false, sales: true, waybill: true, expenses: false, quotations: false, transfers: false, returns: true, accounting: false, hrm: false, people: true, reports: false, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Purchase Manager': { dashboard: true, pos: false, products: true, purchases: true, sales: false, waybill: false, expenses: true, quotations: true, transfers: true, returns: true, accounting: false, hrm: false, people: true, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Sales Manager': { dashboard: true, pos: true, products: true, purchases: false, sales: true, waybill: true, expenses: false, quotations: true, transfers: false, returns: true, accounting: false, hrm: false, people: true, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Warehouse Manager': { dashboard: true, pos: false, products: true, purchases: true, sales: false, waybill: true, expenses: false, quotations: false, transfers: true, returns: true, accounting: false, hrm: false, people: false, reports: true, settings: false, distributorUsers: false, documentation: true, users: false },
+    'Distributor': { dashboard: true, pos: false, products: true, purchases: false, sales: true, waybill: true, expenses: false, quotations: true, transfers: false, returns: false, accounting: false, hrm: false, people: false, reports: false, settings: false, distributorUsers: true, documentation: true, users: false }
   },
   loadPermissions: async () => {
     try {

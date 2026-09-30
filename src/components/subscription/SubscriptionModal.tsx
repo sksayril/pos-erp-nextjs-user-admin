@@ -71,6 +71,8 @@ export const SubscriptionModal = () => {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                email: user?.email || 'admin@erp.com',
+                businessName: 'Apex Enterprise'
               })
             });
 
@@ -81,18 +83,21 @@ export const SubscriptionModal = () => {
                 expiryDate: verifyData.expiryDate,
                 activatedAt: verifyData.activatedAt,
               });
-              addToast('success', 'Subscription Unlocked!', `Payment verified. Auto-generated Activation Code: ${verifyData.activationKey}`);
+              addToast('success', 'Subscription Unlocked!', `Payment verified. Activation Code: ${verifyData.activationKey}`);
             } else {
-              throw new Error(verifyData.error || 'Verification failed');
+              throw new Error(verifyData.error || 'Payment signature verification failed.');
             }
           } catch (err: any) {
-            // Fallback auto activation if sandbox signature check differs
-            activateSubscription({
-              activationKey: `ERP-ACTV-${Math.floor(1000 + Math.random() * 9000)}-RZP9-${Date.now().toString().slice(-4)}-2026`
-            });
-            addToast('success', 'Subscription Unlocked!', 'Razorpay payment completed successfully.');
+            setKeyError(err.message || 'Payment verification failed on server. Subscription not activated.');
+            addToast('error', 'Payment Verification Failed', err.message || 'Signature mismatch.');
           } finally {
             setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+            setKeyError('Razorpay checkout was closed without completing payment. Subscription remains inactive.');
           }
         },
         prefill: {
@@ -106,27 +111,53 @@ export const SubscriptionModal = () => {
       };
 
       const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (resp: any) {
+        setLoading(false);
+        setKeyError(`Payment failed: ${resp.error.description || resp.error.reason || 'Transaction could not be completed.'}`);
+      });
       paymentObject.open();
     } catch (err: any) {
       console.error('Razorpay Error:', err);
-      // Fallback sandbox simulation for rapid testing
-      const simKey = `ERP-ACTV-${Math.floor(1000 + Math.random() * 9000)}-RZP5999-${Date.now().toString().slice(-4)}-2026`;
-      activateSubscription({ activationKey: simKey });
-      addToast('success', 'Subscription Activated (Demo Sandbox)', `Auto-generated Activation Code: ${simKey}`);
-    } finally {
+      setKeyError(err.message || 'Failed to initialize payment.');
       setLoading(false);
     }
   };
 
-  const handleManualActivate = (e: React.FormEvent) => {
+  const handleManualActivate = async (e: React.FormEvent) => {
     e.preventDefault();
     setKeyError('');
-    const result = verifyManualKey(inputKey);
-    if (result.success) {
-      addToast('success', 'System Activated!', 'Activation code verified. All modules are now unlocked.');
-      setInputKey('');
-    } else {
-      setKeyError(result.error || 'Invalid key.');
+    if (!inputKey.trim()) {
+      setKeyError('Please enter an Activation Code.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/subscription/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activationKey: inputKey.trim(),
+          email: user?.email || 'admin@erp.com'
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        activateSubscription({
+          activationKey: data.activationKey,
+          expiryDate: data.expiryDate,
+          activatedAt: data.activatedAt,
+        });
+        addToast('success', 'System Activated!', 'Activation code verified in MongoDB. All modules unlocked.');
+        setInputKey('');
+      } else {
+        setKeyError(data.error || 'Invalid Activation Code. Key must start with ERP-ACTV-');
+      }
+    } catch (err: any) {
+      setKeyError(err.message || 'Error communicating with verification API.');
+    } finally {
+      setLoading(false);
     }
   };
 

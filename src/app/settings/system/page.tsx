@@ -1,121 +1,296 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageContainer } from '../../../components/layout/PageContainer';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { useUIStore, useToastStore, ColorTheme } from '../../../lib/store';
-import { Palette, Check, Monitor, LayoutGrid } from 'lucide-react';
+import { Badge } from '../../../components/ui/Badge';
+import { useToastStore } from '../../../lib/store';
+import { 
+  Settings, Save, RefreshCw, Sliders, ShieldCheck, 
+  Bell, Scan, AlertTriangle, Lock, Server, Cpu
+} from 'lucide-react';
 
 export default function SystemSettingsPage() {
-  const { colorTheme, setColorTheme } = useUIStore();
   const { addToast } = useToastStore();
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    addToast('success', 'System Configs Saved', 'System configurations successfully updated.');
+  const [form, setForm] = useState({
+    lowStockThreshold: 10,
+    enableSoundAlerts: true,
+    enableBarcodeScanner: true,
+    enableNegativeStockSale: false,
+    enableCreditSales: true,
+    taxInclusivePricing: false,
+    defaultWarehouse: 'Main Central Hub',
+    defaultPaymentMethod: 'Cash',
+    sessionTimeoutMinutes: 60,
+    maintenanceMode: false
+  });
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [sysRes, whRes] = await Promise.all([
+        fetch('/api/settings/system'),
+        fetch('/api/settings/warehouse')
+      ]);
+      const sysData = await sysRes.json();
+      const whData = await whRes.json();
+
+      if (sysData && !sysData.error) setForm(sysData);
+      if (Array.isArray(whData)) setWarehouses(whData);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const themes: Array<{ id: ColorTheme; name: string; primaryBg: string; secondaryBg: string; desc: string }> = [
-    { id: 'purple', name: 'Purple Royal (Default)', primaryBg: 'bg-violet-600', secondaryBg: 'bg-orange-500', desc: 'Vibrant purple headers with warm orange secondary triggers.' },
-    { id: 'emerald', name: 'Emerald Mint', primaryBg: 'bg-emerald-600', secondaryBg: 'bg-sky-500', desc: 'Clean fresh green look with cooling sky blue accents.' },
-    { id: 'ocean', name: 'Ocean Blue', primaryBg: 'bg-blue-600', secondaryBg: 'bg-rose-500', desc: 'Deep professional blue layout with pink highlight accents.' },
-    { id: 'sunset', name: 'Sunset Orange', primaryBg: 'bg-orange-600', secondaryBg: 'bg-violet-600', desc: 'Energetic sunset orange theme paired with royalty purples.' },
-    { id: 'rose', name: 'Rose Pink', primaryBg: 'bg-rose-600', secondaryBg: 'bg-emerald-500', desc: 'Premium luxury pink layout with light mint highlights.' }
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleChange = (field: string, val: any) => {
+    setForm(prev => ({ ...prev, [field]: val }));
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/settings/system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      if (res.ok) {
+        addToast('success', 'System Parameters Saved', 'Global POS & ERP rules updated successfully.');
+      } else {
+        addToast('error', 'Error', 'Failed to save system settings.');
+      }
+    } catch {
+      addToast('error', 'Network Error', 'Failed to reach backend.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <AppShell>
       <PageContainer>
-        <div className="max-w-3xl mx-auto space-y-6 select-none">
-          <div className="border-b border-border pb-3 flex items-center gap-2">
-            <Palette className="h-5 w-5 text-primary" />
-            <div>
-              <h2 className="text-lg font-extrabold text-foreground">Theme & System Settings</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Customize the visual theme layout, sidebar colors, and currency default parameters.</p>
+        <div className="space-y-6 select-none max-w-[1400px] mx-auto pb-12">
+          
+          {/* Top Hero Banner */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-8 text-white shadow-xl border border-slate-700/40">
+            <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-slate-700/20 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold backdrop-blur-md">
+                  <Cpu className="h-3.5 w-3.5" />
+                  <span>Global Application Engine Rules</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+                  System Settings
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-2xl font-normal leading-relaxed">
+                  Configure global inventory thresholds, POS scanner triggers, credit limits, sound effects, and server maintenance modes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={fetchData}
+                  title="Reload"
+                  className="h-11 w-11 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-all cursor-pointer backdrop-blur-md"
+                >
+                  <RefreshCw className={`h-4.5 w-4.5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+
+                <Button
+                  variant="primary"
+                  onClick={handleSave}
+                  disabled={isSaving || loading}
+                  className="h-11 px-6 rounded-2xl font-bold shadow-lg shadow-indigo-500/25 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white cursor-pointer border-0 flex items-center gap-2"
+                >
+                  <Save className="h-4.5 w-4.5" />
+                  <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
+                </Button>
+              </div>
             </div>
           </div>
 
+          {/* Form Settings */}
           <form onSubmit={handleSave} className="space-y-6">
-            {/* 1. THEME PICKER PALETTE CONTAINER */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/50 bg-zinc-50/50 dark:bg-zinc-900/50">
-                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <LayoutGrid className="h-4.5 w-4.5 text-zinc-500" /> Choose UI Color Theme
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {themes.map((theme) => {
-                    const isSelected = colorTheme === theme.id;
-                    return (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        onClick={() => setColorTheme(theme.id)}
-                        className={`text-left p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 hover:shadow-xs active:scale-[0.99] bg-card ${
-                          isSelected
-                            ? 'border-primary ring-2 ring-primary/20 shadow-xs'
-                            : 'border-border hover:border-zinc-300 dark:hover:border-zinc-700'
-                        }`}
-                      >
-                        {/* Dynamic color circles */}
-                        <div className="flex -space-x-2 shrink-0 mt-0.5">
-                          <div className={`h-6 w-6 rounded-full border border-card shadow-sm ${theme.primaryBg}`} />
-                          <div className={`h-6 w-6 rounded-full border border-card shadow-sm ${theme.secondaryBg}`} />
-                        </div>
-                        
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-foreground leading-none">{theme.name}</span>
-                            {isSelected && (
-                              <div className="h-4.5 w-4.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                                <Check className="h-3 w-3" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">
-                            {theme.desc}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+            
+            {/* POS & Inventory Operational Rules */}
+            <div className="p-6 rounded-3xl bg-card border border-border/80 shadow-xs space-y-5">
+              <div className="flex items-center gap-2.5 pb-4 border-b border-border/60">
+                <div className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Sliders className="h-4 w-4" />
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* 2. REGULAR SETTINGS BINDINGS */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/50 bg-zinc-50/50 dark:bg-zinc-900/50">
-                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Monitor className="h-4.5 w-4.5 text-zinc-500" /> System Variables & Currencies
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4 text-xs">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-zinc-500">Default Currency Unit</label>
-                    <input className="h-9 w-full rounded border border-border px-3 text-sm bg-card text-foreground" defaultValue="Rs. (Indian Rupees)" disabled />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-zinc-500">System Mode Status</label>
-                    <select className="h-9 w-full rounded border border-border px-2 text-sm bg-card text-foreground">
-                      <option>Active / Online</option>
-                      <option>Maintenance Mode</option>
-                    </select>
-                  </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">POS &amp; Stock Operations</h3>
+                  <p className="text-[11px] text-muted-foreground">Control billing flow, negative stock restrictions, and low quantity alert triggers.</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <div className="flex justify-end pt-2">
-              <Button type="submit" variant="primary" className="h-10 px-6 font-bold shadow-xs">
-                Save System Configs
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1.5">Low Stock Warning Limit</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={form.lowStockThreshold}
+                    onChange={(e) => handleChange('lowStockThreshold', Number(e.target.value))}
+                    className="w-full h-11 rounded-2xl border border-border bg-muted/20 px-4 text-xs font-mono font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1.5">Default Sales Warehouse</label>
+                  <select
+                    value={form.defaultWarehouse}
+                    onChange={(e) => handleChange('defaultWarehouse', e.target.value)}
+                    className="w-full h-11 rounded-2xl border border-border bg-card px-4 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                  >
+                    {warehouses.map(w => (
+                      <option key={w._id || w.code} value={w.name}>{w.name} ({w.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1.5">Default POS Payment Mode</label>
+                  <select
+                    value={form.defaultPaymentMethod}
+                    onChange={(e) => handleChange('defaultPaymentMethod', e.target.value)}
+                    className="w-full h-11 rounded-2xl border border-border bg-card px-4 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI / QR</option>
+                    <option value="Card">Debit / Credit Card</option>
+                    <option value="Bank Transfer">Bank Wire</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-border bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.enableSoundAlerts}
+                    onChange={(e) => handleChange('enableSoundAlerts', e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Audio / Beep Feedback on POS Scan</span>
+                    <span className="text-[10px] text-muted-foreground">Play success sound when product barcode is scanned</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-border bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.enableBarcodeScanner}
+                    onChange={(e) => handleChange('enableBarcodeScanner', e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Continuous Barcode Scanner Listener</span>
+                    <span className="text-[10px] text-muted-foreground">Auto-focus product search input on POS checkout screen</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-border bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.enableNegativeStockSale}
+                    onChange={(e) => handleChange('enableNegativeStockSale', e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Allow Negative Stock Invoicing</span>
+                    <span className="text-[10px] text-muted-foreground">Allow sales even if recorded quantity is 0 or below</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-border bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.enableCreditSales}
+                    onChange={(e) => handleChange('enableCreditSales', e.target.checked)}
+                    className="h-4 w-4 rounded accent-primary"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Enable Customer Credit / Due Sales</span>
+                    <span className="text-[10px] text-muted-foreground">Permit partial payment and outstanding debtor ledger entries</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* System Security & Maintenance */}
+            <div className="p-6 rounded-3xl bg-card border border-border/80 shadow-xs space-y-5">
+              <div className="flex items-center gap-2.5 pb-4 border-b border-border/60">
+                <div className="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-foreground flex items-center justify-center">
+                  <Server className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Session &amp; Server Maintenance</h3>
+                  <p className="text-[11px] text-muted-foreground">Security session lifespan and system override modes.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1.5">User Inactivity Session Timeout (Minutes)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="1440"
+                    value={form.sessionTimeoutMinutes}
+                    onChange={(e) => handleChange('sessionTimeoutMinutes', Number(e.target.value))}
+                    className="w-full h-11 rounded-2xl border border-border bg-muted/20 px-4 text-xs font-mono font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+
+                <label className="flex items-center gap-3 p-3.5 rounded-2xl border border-border bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={form.maintenanceMode}
+                    onChange={(e) => handleChange('maintenanceMode', e.target.checked)}
+                    className="h-4 w-4 rounded accent-rose-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">System Maintenance Mode</span>
+                    <span className="text-[10px] text-muted-foreground">Temporarily lock non-admin user logouts and POS terminals</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Bottom Save Action */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isSaving || loading}
+                className="h-11 px-8 rounded-2xl font-bold shadow-lg shadow-indigo-500/25 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white cursor-pointer border-0 flex items-center gap-2"
+              >
+                <Save className="h-4.5 w-4.5" />
+                <span>{isSaving ? 'Saving...' : 'Save System Rules'}</span>
               </Button>
             </div>
+
           </form>
+
         </div>
       </PageContainer>
     </AppShell>

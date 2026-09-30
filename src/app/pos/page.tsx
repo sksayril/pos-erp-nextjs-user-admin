@@ -10,7 +10,8 @@ import { Modal } from '../../components/ui/Modal';
 import { 
   ArrowLeft, Search, Barcode, Trash2, Plus, 
   Minus, ShoppingCart, HelpCircle, Save, FolderOpen, 
-  DollarSign, CreditCard, QrCode, Split, CheckCircle 
+  DollarSign, CreditCard, QrCode, Split, CheckCircle,
+  UserPlus, User, Phone, X, ChevronDown, Check, MapPin, Mail, Loader2
 } from 'lucide-react';
 
 export default function POSPage() {
@@ -25,10 +26,25 @@ export default function POSPage() {
 
   const [activeTab, setActiveTab] = useState<'products' | 'cart'>('products');
   const [productsList, setProductsList] = useState<any[]>(mockProducts);
+  const [customersList, setCustomersList] = useState<any[]>(mockCustomers);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [barcodeInput, setBarcodeInput] = useState('');
   
+  // Customer Search & Dropdown State
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Quick Add Customer Modal States
+  const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustEmail, setNewCustEmail] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+  const [customerFormError, setCustomerFormError] = useState('');
+
   // Checkout Dialog States
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Card' | 'UPI' | 'Split' | 'Credit'>('Cash');
@@ -39,7 +55,7 @@ export default function POSPage() {
   // Held Bills Dialog
   const [heldBillsOpen, setHeldBillsOpen] = useState(false);
 
-  // Load products from DB
+  // Load products & customers from DB
   useEffect(() => {
     fetch('/api/products')
       .then((res) => res.json())
@@ -49,6 +65,26 @@ export default function POSPage() {
         }
       })
       .catch((err) => console.error('Error fetching live products:', err));
+
+    fetch('/api/customers')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCustomersList(data);
+        }
+      })
+      .catch((err) => console.error('Error fetching live customers:', err));
+  }, []);
+
+  // Close customer dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setCustomerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Keyboard shortcut listener
@@ -68,6 +104,73 @@ export default function POSPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cart]);
+
+  // Filtered Customers based on search query (Name or Mobile)
+  const filteredCustomers = customersList.filter((cust) => {
+    const q = customerSearch.toLowerCase().trim();
+    if (!q) return true;
+    const nameMatch = cust.name ? cust.name.toLowerCase().includes(q) : false;
+    const phoneMatch = cust.phone ? cust.phone.includes(q) : false;
+    return nameMatch || phoneMatch;
+  });
+
+  // Handle Quick Add Customer directly from POS
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomerFormError('');
+
+    if (!newCustPhone.trim() && !newCustName.trim()) {
+      setCustomerFormError('Please enter a customer mobile number or name.');
+      return;
+    }
+
+    setIsSavingCustomer(true);
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCustName.trim() || undefined,
+          phone: newCustPhone.trim() || undefined,
+          email: newCustEmail.trim() || undefined,
+          address: newCustAddress.trim() || undefined,
+        })
+      });
+
+      const savedCust = await res.json();
+      if (!res.ok) {
+        throw new Error(savedCust.error || 'Failed to save customer');
+      }
+
+      const formattedCust = {
+        id: savedCust._id || savedCust.id || `cust-${Date.now()}`,
+        name: savedCust.name,
+        phone: savedCust.phone,
+        email: savedCust.email,
+        address: savedCust.address,
+        creditLimit: savedCust.creditLimit || 0,
+        outstandingBalance: savedCust.outstandingBalance || 0,
+        status: 'Active' as const,
+      };
+
+      setCustomersList(prev => [formattedCust, ...prev.filter(c => (c.id || c._id) !== formattedCust.id)]);
+      setCustomer(formattedCust);
+      addToast('success', 'Customer Added & Selected', `${formattedCust.name} (${formattedCust.phone}) selected for POS billing.`);
+      
+      // Reset form & state
+      setNewCustName('');
+      setNewCustPhone('');
+      setNewCustEmail('');
+      setNewCustAddress('');
+      setAddCustomerModalOpen(false);
+      setCustomerDropdownOpen(false);
+      setCustomerSearch('');
+    } catch (err: any) {
+      setCustomerFormError(err.message || 'Error saving customer.');
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  };
 
   // Categories list
   const categories = [
@@ -396,23 +499,157 @@ export default function POSPage() {
         <div className={`w-full lg:w-96 bg-card lg:border-l border-border flex flex-col h-full shrink-0 ${activeTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Customer selector header */}
-          <div className="p-4 border-b border-border/80 space-y-3 shrink-0 select-none">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Select Customer</label>
-              <select
-                value={selectedCustomer.id}
-                onChange={(e) => {
-                  const found = mockCustomers.find(c => c.id === e.target.value);
-                  if (found) setCustomer(found);
+          <div className="p-4 border-b border-border/80 space-y-2 shrink-0 select-none">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="h-3 w-3 text-primary" /> Select Customer
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomerFormError('');
+                  setAddCustomerModalOpen(true);
                 }}
-                className="h-10 w-full rounded-lg border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-lg transition-colors"
               >
-                {mockCustomers.map((cust) => (
-                  <option key={cust.id} value={cust.id}>
-                    {cust.name} ({cust.phone})
-                  </option>
-                ))}
-              </select>
+                <UserPlus className="h-3 w-3" />
+                <span>+ Add Customer</span>
+              </button>
+            </div>
+
+            {/* Searchable Customer Dropdown Box */}
+            <div className="relative" ref={customerDropdownRef}>
+              <div
+                onClick={() => setCustomerDropdownOpen(prev => !prev)}
+                className="flex items-center justify-between h-10 w-full rounded-xl border border-border bg-card px-3 text-xs text-foreground cursor-pointer hover:border-primary/50 transition-colors shadow-xs"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <User className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="truncate">
+                    <span className="font-bold text-foreground">{selectedCustomer?.name || 'Walk-In Customer'}</span>
+                    <span className="text-[10px] text-muted-foreground ml-1.5">({selectedCustomer?.phone || '0000000000'})</span>
+                  </div>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${customerDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+              </div>
+
+              {/* Popover Dropdown Menu */}
+              {customerDropdownOpen && (
+                <div className="absolute left-0 right-0 top-12 z-50 rounded-xl border border-border bg-card shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 p-2 space-y-2">
+                  {/* Live Search Input */}
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search Name or Mobile (e.g. 9876543210)..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="h-8 w-full rounded-lg border border-border bg-muted/30 pl-8 pr-7 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                    />
+                    {customerSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomerSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Customer Results List */}
+                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
+                    {filteredCustomers.length > 0 ? (
+                      filteredCustomers.map((cust) => {
+                        const isSelected = selectedCustomer?.id === cust.id || selectedCustomer?.phone === cust.phone;
+                        return (
+                          <div
+                            key={cust.id || cust._id}
+                            onClick={() => {
+                              setCustomer(cust);
+                              setCustomerDropdownOpen(false);
+                              setCustomerSearch('');
+                            }}
+                            className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-xs ${
+                              isSelected 
+                                ? 'bg-primary/10 text-primary font-bold' 
+                                : 'hover:bg-muted text-foreground'
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="font-semibold truncate flex items-center gap-1.5">
+                                <span>{cust.name}</span>
+                                {cust.phone === '0000000000' && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground">Default</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Phone className="h-2.5 w-2.5" /> {cust.phone}
+                              </div>
+                            </div>
+                            {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 text-center space-y-2">
+                        <p className="text-xs text-muted-foreground">No customer matches &quot;{customerSearch}&quot;</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (/^\d+$/.test(customerSearch.trim())) {
+                              setNewCustPhone(customerSearch.trim());
+                              setNewCustName('');
+                            } else {
+                              setNewCustName(customerSearch.trim());
+                              setNewCustPhone('');
+                            }
+                            setAddCustomerModalOpen(true);
+                            setCustomerDropdownOpen(false);
+                          }}
+                          className="text-xs font-bold text-primary hover:underline flex items-center justify-center gap-1 w-full bg-primary/10 py-1.5 rounded-lg cursor-pointer"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          <span>+ Create &quot;{customerSearch}&quot; as New Customer</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Action in dropdown */}
+                  <div className="pt-1.5 border-t border-border flex items-center justify-between text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultWalkIn = customersList.find(c => c.phone === '0000000000') || {
+                          id: 'cust-walkin',
+                          name: 'Walk-In Customer',
+                          phone: '0000000000'
+                        };
+                        setCustomer(defaultWalkIn);
+                        setCustomerDropdownOpen(false);
+                        setCustomerSearch('');
+                      }}
+                      className="text-muted-foreground hover:text-foreground underline cursor-pointer"
+                    >
+                      Reset Walk-In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddCustomerModalOpen(true);
+                        setCustomerDropdownOpen(false);
+                      }}
+                      className="font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <UserPlus className="h-3 w-3" /> + Add New
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -757,6 +994,112 @@ export default function POSPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* 3. QUICK ADD CUSTOMER MODAL (POS) */}
+      <Modal
+        isOpen={addCustomerModalOpen}
+        onClose={() => setAddCustomerModalOpen(false)}
+        title="Quick Add Customer (POS)"
+        size="md"
+      >
+        <form onSubmit={handleCreateCustomer} className="space-y-4 select-none">
+          <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-muted-foreground flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <UserPlus className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground">Fast Customer Registration</p>
+              <p className="text-[11px]">Enter mobile number only to quickly register, or add full name &amp; details.</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {/* Mobile Number (Primary) */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-primary" /> Mobile Number *
+              </label>
+              <input
+                type="tel"
+                required
+                autoFocus
+                value={newCustPhone}
+                onChange={(e) => { setNewCustPhone(e.target.value); setCustomerFormError(''); }}
+                placeholder="e.g. 9876543210 (Required)"
+                className="h-10 w-full rounded-xl border border-border bg-card px-3 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+              />
+            </div>
+
+            {/* Customer Name */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-primary" /> Customer Name (Optional)
+              </label>
+              <input
+                type="text"
+                value={newCustName}
+                onChange={(e) => { setNewCustName(e.target.value); setCustomerFormError(''); }}
+                placeholder="e.g. Aryan Sharma (Defaults to Customer [Mobile])"
+                className="h-10 w-full rounded-xl border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+              />
+            </div>
+
+            {/* Optional Email & Address */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-primary" /> Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={newCustEmail}
+                  onChange={(e) => setNewCustEmail(e.target.value)}
+                  placeholder="customer@email.com"
+                  className="h-9 w-full rounded-xl border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-primary" /> City / Address (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newCustAddress}
+                  onChange={(e) => setNewCustAddress(e.target.value)}
+                  placeholder="City or Area"
+                  className="h-9 w-full rounded-xl border border-border bg-card px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            </div>
+          </div>
+
+          {customerFormError && (
+            <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs">
+              ⚠️ {customerFormError}
+            </div>
+          )}
+
+          <div className="border-t border-border/50 pt-3 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAddCustomerModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSavingCustomer}
+              className="gap-1.5 font-bold cursor-pointer"
+            >
+              {!isSavingCustomer && <Check className="h-4 w-4" />}
+              Save &amp; Select for POS
+            </Button>
+          </div>
+        </form>
       </Modal>
 
     </div>

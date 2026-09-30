@@ -296,8 +296,8 @@ export function DataTable<T extends { id: string | number; [key: string]: any }>
           </TableHeader>
           <TableBody>
             {paginatedData.length > 0 ? (
-              paginatedData.map((row) => (
-                <TableRow key={row.id}>
+              paginatedData.map((row, rowIdx) => (
+                <TableRow key={row.id || row._id || `row-${rowIdx}`}>
                   {columns.map((col, colIdx) => (
                     <TableCell key={colIdx}>
                       {col.render ? col.render(row) : String(row[col.accessor as string] ?? '')}
@@ -305,32 +305,32 @@ export function DataTable<T extends { id: string | number; [key: string]: any }>
                   ))}
                   {(onView || onEdit || onDelete) && (
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-2">
                         {onView && (
                           <button
                             onClick={() => onView(row)}
-                            className="rounded p-1.5 text-info hover:bg-info/10 transition-colors cursor-pointer"
+                            className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-500/20 flex items-center justify-center transition-all shadow-sm cursor-pointer"
                             title="View Details"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4.5 w-4.5" />
                           </button>
                         )}
                         {onEdit && (
                           <button
                             onClick={() => onEdit(row)}
-                            className="rounded p-1.5 text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                            className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-600 hover:text-white border border-amber-500/20 flex items-center justify-center transition-all shadow-sm cursor-pointer"
                             title="Edit"
                           >
-                            <Edit3 className="h-4 w-4" />
+                            <Edit3 className="h-4.5 w-4.5" />
                           </button>
                         )}
                         {onDelete && (
                           <button
                             onClick={() => onDelete(row)}
-                            className="rounded p-1.5 text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            className="h-8 w-8 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-500/20 flex items-center justify-center transition-all shadow-sm cursor-pointer"
                             title="Delete"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4.5 w-4.5" />
                           </button>
                         )}
                       </div>

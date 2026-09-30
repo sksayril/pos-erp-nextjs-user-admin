@@ -34,6 +34,19 @@ const roleColors: Record<string, string> = {
   'Distributor': 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300',
 };
 
+const roleDescriptions: Record<string, string> = {
+  'Super Admin': 'Master owner with full access to all system modules, activation, and user management.',
+  'Admin': 'Administrator with permissions for sales, products, purchases, reports, and staff management.',
+  'Manager': 'Store manager with access to POS, Sales, Purchases, Inventory, HRM, and Reports.',
+  'Cashier': 'POS cashier with fast access to POS Terminal Billing, Sales Invoices & Receipts.',
+  'Accountant': 'Accounting specialist with access to Cash/Bank books, Ledgers, Expenses & Financial Reports.',
+  'HR Manager': 'Human resource manager with access to Employee database, Attendance, Payroll & Leave tracking.',
+  'Purchase Manager': 'Handles purchase orders, suppliers, goods inward, and stock inventory.',
+  'Sales Manager': 'Manages sales teams, customer quotations, pricing, and deliveries.',
+  'Warehouse Manager': 'Oversees warehouses, stock adjustment, item transfers, and product batches.',
+  'Distributor': 'Distributor user for wholesale ordering, delivery waybills, and quotations.'
+};
+
 const defaultForm = {
   name: '', email: '', phone: '',
   role: 'Cashier' as UserRole,
@@ -45,9 +58,9 @@ const defaultForm = {
 export default function SettingsUsersPage() {
   const { addToast } = useToastStore();
   const { user: currentUser } = useAuthStore();
-  const { registry, addRegistryUser, updateRegistryUser, deleteRegistryUser } = useUserRegistry();
+  const { registry, addRegistryUser, updateRegistryUser, deleteRegistryUser, loadUsersFromDB, isLoading } = useUserRegistry();
 
-  const isSuperAdmin = currentUser?.role === 'Super Admin';
+  const isSuperAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'Admin';
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithPassword | null>(null);
@@ -56,6 +69,11 @@ export default function SettingsUsersPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Sync with live MongoDB users database on mount
+  React.useEffect(() => {
+    loadUsersFromDB();
+  }, [loadUsersFromDB]);
 
   const openAdd = () => {
     setEditingUser(null);
@@ -369,6 +387,9 @@ export default function SettingsUsersPage() {
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
+                <p className="text-[10px] text-muted-foreground leading-tight pt-0.5">
+                  ℹ️ {roleDescriptions[form.role]}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">Account Status</label>

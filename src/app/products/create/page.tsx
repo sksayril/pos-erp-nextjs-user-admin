@@ -1,191 +1,482 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '../../../components/layout/AppShell';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToastStore } from '../../../lib/store';
-
-const schema = z.object({
-  name: z.string().min(3, { message: 'Product Name must be at least 3 characters' }),
-  sku: z.string().min(3, { message: 'SKU code is required' }),
-  barcode: z.string().min(5, { message: 'Barcode is required' }),
-  purchasePrice: z.number().min(0.01, { message: 'Purchase price must be positive' }),
-  sellingPrice: z.number().min(0.01, { message: 'Selling price must be positive' }),
-  openingStock: z.number().min(0, { message: 'Opening Stock must be 0 or higher' }),
-  minStock: z.number().min(0, { message: 'Minimum Stock requirement is required' }),
-  status: z.string()
-});
+import { 
+  Package, 
+  ArrowLeft, 
+  Save, 
+  Sparkles, 
+  DollarSign, 
+  Layers, 
+  Image as ImageIcon,
+  Tag,
+  Building2,
+  Scale
+} from 'lucide-react';
 
 export default function CreateProductPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
   const { addToast } = useToastStore();
-  const [imageUrl, setImageUrl] = useState('');
-  const [uploading, setUploading] = useState(false);
-  
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      name: '',
-      sku: '',
-      barcode: '',
-      purchasePrice: 0,
-      sellingPrice: 0,
-      openingStock: 0,
-      minStock: 5,
-      status: 'Active'
-    }
+
+  const [categories, setCategories] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    sku: '',
+    barcode: '',
+    category: '',
+    brand: '',
+    unit: 'Pieces (pcs)',
+    costPrice: 0,
+    sellingPrice: 0,
+    taxRate: 18,
+    openingStock: 10,
+    minStockAlert: 5,
+    supplier: '',
+    description: '',
+    status: 'Active',
+    image: ''
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  useEffect(() => {
+    // Load dropdown options
+    const loadOptions = async () => {
+      try {
+        const [catRes, brandRes, unitRes] = await Promise.all([
+          fetch('/api/products/categories'),
+          fetch('/api/products/brands'),
+          fetch('/api/products/units')
+        ]);
+        const cats = await catRes.json();
+        const brs = await brandRes.json();
+        const uns = await unitRes.json();
+        if (Array.isArray(cats)) setCategories(cats);
+        if (Array.isArray(brs)) setBrands(brs);
+        if (Array.isArray(uns)) setUnits(uns);
 
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
+        if (cats.length > 0 && !formData.category) {
+          setFormData(prev => ({ ...prev, category: cats[0].name }));
+        }
+        if (brs.length > 0 && !formData.brand) {
+          setFormData(prev => ({ ...prev, brand: brs[0].name }));
+        }
+      } catch (err) {
+        console.error('Error fetching dropdown options:', err);
+      }
+    };
+    loadOptions();
 
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-      if (!res.ok) throw new Error('S3 Image Upload failed');
-      const data = await res.json();
-      setImageUrl(data.url);
-      addToast('success', 'Image Uploaded', 'Product image successfully uploaded to AWS S3.');
-    } catch (err: any) {
-      console.error('Upload Error:', err);
-      addToast('error', 'Upload Failed', err.message || 'Could not upload to S3.');
-    } finally {
-      setUploading(false);
+    // If in edit mode, fetch existing product
+    if (editId) {
+      setLoading(true);
+      fetch('/api/products')
+        .then(res => res.json())
+        .then(products => {
+          if (Array.isArray(products)) {
+            const item = products.find((p: any) => p._id === editId || p.id === editId);
+            if (item) {
+              setFormData({
+                name: item.name || '',
+                sku: item.sku || '',
+                barcode: item.barcode || '',
+                category: item.category || '',
+                brand: item.brand || '',
+                unit: item.unit || 'Pieces (pcs)',
+                costPrice: Number(item.costPrice) || 0,
+                sellingPrice: Number(item.sellingPrice) || 0,
+                taxRate: Number(item.taxRate) || 0,
+                openingStock: Number(item.openingStock) || 0,
+                minStockAlert: Number(item.minStockAlert) || 5,
+                supplier: item.supplier || '',
+                description: item.description || '',
+                status: item.status || 'Active',
+                image: item.image || ''
+              });
+            }
+          }
+        })
+        .catch(err => console.error('Error fetching product for edit:', err))
+        .finally(() => setLoading(false));
     }
+  }, [editId]);
+
+  const generateAutoSKU = () => {
+    const prefix = formData.name ? formData.name.slice(0, 3).toUpperCase() : 'PRD';
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const generatedSKU = `${prefix}-${randomNum}`;
+    const generatedBarcode = `890${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+    setFormData(prev => ({
+      ...prev,
+      sku: generatedSKU,
+      barcode: prev.barcode || generatedBarcode
+    }));
+    addToast('info', 'Generated', `Assigned SKU: ${generatedSKU}`);
   };
 
-  const onSubmit = async (data: any) => {
-    const productPayload = {
-      ...data,
-      categoryId: 'cat-1',
-      unitId: 'un-1',
-      image: imageUrl
-    };
+  const calculateMargin = () => {
+    if (!formData.sellingPrice || !formData.costPrice || formData.sellingPrice <= 0) return 0;
+    const profit = formData.sellingPrice - formData.costPrice;
+    return Math.round((profit / formData.sellingPrice) * 100);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.sku) {
+      addToast('warning', 'Validation', 'Product name and SKU code are required.');
+      return;
+    }
 
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      setSaving(true);
+      const url = '/api/products';
+      const method = editId ? 'PUT' : 'POST';
+      const body = editId ? { _id: editId, ...formData } : formData;
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productPayload)
+        body: JSON.stringify(body)
       });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Failed to submit product');
-      }
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to save product');
 
-      addToast('success', 'Product Created', `${data.name} saved to MongoDB.`);
+      addToast('success', 'Success', editId ? 'Product updated successfully!' : 'New product created in MongoDB!');
       router.push('/products');
-    } catch (error: any) {
-      console.error('Submit Error:', error);
-      addToast('error', 'Error Saving Product', error.message || 'Could not record product to MongoDB.');
+    } catch (err: any) {
+      console.error('Save error:', err);
+      addToast('error', 'Error', err.message || 'Could not save product');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <AppShell>
       <PageContainer>
-        <Card className="max-w-2xl mx-auto shadow-md">
-          <CardHeader>
-            <CardTitle>Add New Product (Live S3 + MongoDB)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs select-none">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Product Name</label>
-                  <input {...register('name')} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.name && <p className="text-rose-500 text-[10px]">{errors.name.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">SKU</label>
-                  <input {...register('sku')} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.sku && <p className="text-rose-500 text-[10px]">{errors.sku.message}</p>}
-                </div>
+        <div className="max-w-4xl mx-auto space-y-6">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={() => router.push('/products')} className="h-9 w-9 p-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" /> {editId ? 'Edit Product Item' : 'Create New Product'}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Configure inventory master parameters, valuation prices, and taxonomy.
+                </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={generateAutoSKU} 
+                className="gap-1.5 text-xs h-9"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> Auto-Generate SKU
+              </Button>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={saving} 
+                size="sm" 
+                className="gap-1.5 text-xs h-9 font-semibold"
+              >
+                <Save className="h-4 w-4" /> {saving ? 'Saving...' : editId ? 'Update Product' : 'Save Product'}
+              </Button>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Barcode</label>
-                  <input {...register('barcode')} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.barcode && <p className="text-rose-500 text-[10px]">{errors.barcode.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Status</label>
-                  <select {...register('status')} className="h-9 w-full rounded border border-border px-2 text-sm focus:outline-none bg-card text-foreground">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Purchase Price (Rs.)</label>
-                  <input type="number" step="0.01" {...register('purchasePrice', { valueAsNumber: true })} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.purchasePrice && <p className="text-rose-500 text-[10px]">{errors.purchasePrice.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Selling Price (Rs.)</label>
-                  <input type="number" step="0.01" {...register('sellingPrice', { valueAsNumber: true })} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.sellingPrice && <p className="text-rose-500 text-[10px]">{errors.sellingPrice.message}</p>}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Opening Stock</label>
-                  <input type="number" {...register('openingStock', { valueAsNumber: true })} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.openingStock && <p className="text-rose-500 text-[10px]">{errors.openingStock.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-zinc-500">Min Alert Stock</label>
-                  <input type="number" {...register('minStock', { valueAsNumber: true })} className="h-9 w-full rounded border border-border px-3 text-sm focus:outline-none bg-card text-foreground" />
-                  {errors.minStock && <p className="text-rose-500 text-[10px]">{errors.minStock.message}</p>}
-                </div>
-              </div>
-
-              {/* AWS S3 Image Uploader Field */}
-              <div className="space-y-1.5 border-t border-border/40 pt-4">
-                <label className="font-bold text-zinc-500">Product Image (AWS S3 Upload)</label>
-                <div className="flex items-center gap-3 mt-1">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handleImageUpload} 
-                    className="h-10 w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer bg-card rounded border border-border p-1" 
-                  />
-                  {uploading && <span className="text-[10px] text-zinc-500 animate-pulse font-bold">Uploading...</span>}
-                </div>
-                {imageUrl && (
-                  <div className="mt-2 h-16 w-16 rounded-lg border border-border overflow-hidden bg-muted shadow-sm">
-                    <img src={imageUrl} alt="S3 Upload Preview" className="h-full w-full object-cover" />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* Section 1: Basic Information */}
+            <Card className="border border-border shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/60">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-primary" /> 1. General Identification
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Product Name *</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. MacBook Pro M3 Max 16-inch"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
                   </div>
-                )}
-              </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">SKU (Stock Keeping Unit) *</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. MBP-M3-16-01"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value.toUpperCase() })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-border/40">
-                <Button type="button" variant="outline" onClick={() => router.push('/products')}>Cancel</Button>
-                <Button type="submit" variant="primary" isLoading={isSubmitting}>Save Product</Button>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Barcode / EAN / UPC</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 8901234567890"
+                      value={formData.barcode}
+                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Category</label>
+                    <select 
+                      value={formData.category} 
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-2.5 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map((c, i) => (
+                        <option key={i} value={c.name}>{c.name}</option>
+                      ))}
+                      {categories.length === 0 && (
+                        <>
+                          <option value="Electronics & Gadgets">Electronics & Gadgets</option>
+                          <option value="Computers & Laptops">Computers & Laptops</option>
+                          <option value="Mobile Phones">Mobile Phones</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Brand</label>
+                    <select 
+                      value={formData.brand} 
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-2.5 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">Select Brand</option>
+                      {brands.map((b, i) => (
+                        <option key={i} value={b.name}>{b.name}</option>
+                      ))}
+                      {brands.length === 0 && (
+                        <>
+                          <option value="Apple">Apple</option>
+                          <option value="Samsung">Samsung</option>
+                          <option value="Sony">Sony</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                </div>
 
-            </form>
-          </CardContent>
-        </Card>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Product Description</label>
+                  <textarea 
+                    rows={3}
+                    placeholder="Short product overview, specifications, and warranty information..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full rounded-lg border border-border p-3 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 2: Pricing & Taxation */}
+            <Card className="border border-border shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/60">
+                <CardTitle className="text-sm font-semibold flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-500" /> 2. Pricing, Margin & Taxation
+                  </span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Estimated Profit Margin: <strong className="text-emerald-500 font-mono">{calculateMargin()}%</strong>
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Cost / Purchase Price (Rs.)</label>
+                    <input 
+                      type="number" 
+                      step="any"
+                      placeholder="0.00"
+                      value={formData.costPrice || ''}
+                      onChange={(e) => setFormData({ ...formData, costPrice: parseFloat(e.target.value) || 0 })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Selling / Retail Price (Rs.) *</label>
+                    <input 
+                      type="number" 
+                      step="any"
+                      placeholder="0.00"
+                      value={formData.sellingPrice || ''}
+                      onChange={(e) => setFormData({ ...formData, sellingPrice: parseFloat(e.target.value) || 0 })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background font-mono font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">GST / Tax Rate (%)</label>
+                    <select 
+                      value={formData.taxRate} 
+                      onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })}
+                      className="h-9 w-full rounded-lg border border-border px-2.5 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value={0}>0% (Tax Exempt / Nil)</option>
+                      <option value={5}>5% (GST 5%)</option>
+                      <option value={12}>12% (GST 12%)</option>
+                      <option value={18}>18% (Standard GST 18%)</option>
+                      <option value={28}>28% (Luxury GST 28%)</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 3: Inventory & Warehouse Stock */}
+            <Card className="border border-border shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/60">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" /> 3. Stock Level & Unit Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Unit of Measure</label>
+                    <select 
+                      value={formData.unit} 
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-2.5 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {units.map((u, i) => (
+                        <option key={i} value={`${u.name} (${u.code})`}>{u.name} ({u.code})</option>
+                      ))}
+                      {units.length === 0 && (
+                        <>
+                          <option value="Pieces (pcs)">Pieces (pcs)</option>
+                          <option value="Kilograms (kg)">Kilograms (kg)</option>
+                          <option value="Boxes (box)">Boxes (box)</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Opening / Initial Stock</label>
+                    <input 
+                      type="number" 
+                      value={formData.openingStock}
+                      onChange={(e) => setFormData({ ...formData, openingStock: parseInt(e.target.value) || 0 })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Min Stock Reorder Alert</label>
+                    <input 
+                      type="number" 
+                      value={formData.minStockAlert}
+                      onChange={(e) => setFormData({ ...formData, minStockAlert: parseInt(e.target.value) || 0 })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Preferred Supplier / Vendor</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Apex Global Distributors Ltd."
+                      value={formData.supplier}
+                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Status</label>
+                    <select 
+                      value={formData.status} 
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-2.5 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="Active">Active (Available for POS & Sales)</option>
+                      <option value="Inactive">Inactive (Hidden)</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 4: Product Image */}
+            <Card className="border border-border shadow-sm">
+              <CardHeader className="pb-3 border-b border-border/60">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-blue-500" /> 4. Product Media & Image URL
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="space-y-1.5 flex-1 w-full">
+                    <label className="text-xs font-semibold text-foreground">Image Web URL (HTTPS / Cloud)</label>
+                    <input 
+                      type="url" 
+                      placeholder="https://images.unsplash.com/..."
+                      value={formData.image}
+                      onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                      className="h-9 w-full rounded-lg border border-border px-3 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Paste direct image URL or use cloud CDN asset link.
+                    </p>
+                  </div>
+                  {formData.image && (
+                    <div className="h-20 w-20 rounded-xl border border-border overflow-hidden bg-muted flex-shrink-0">
+                      <img src={formData.image} alt="Preview" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Footer */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => router.push('/products')}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="font-semibold gap-2">
+                <Save className="h-4 w-4" /> {saving ? 'Saving...' : editId ? 'Update Product' : 'Create Product Item'}
+              </Button>
+            </div>
+
+          </form>
+
+        </div>
       </PageContainer>
     </AppShell>
   );

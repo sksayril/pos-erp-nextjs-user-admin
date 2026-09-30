@@ -92,3 +92,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message || 'Failed to record credit/debit note' }, { status: 500 });
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    await connectDB();
+    const { id, type, status } = await req.json();
+    if (type === 'credit') {
+      const updated = await CreditNoteModel.findByIdAndUpdate(id, { status }, { new: true });
+      return NextResponse.json(updated);
+    } else if (type === 'debit') {
+      const updated = await DebitNoteModel.findByIdAndUpdate(id, { status }, { new: true });
+      return NextResponse.json(updated);
+    }
+    return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to update note' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const type = searchParams.get('type');
+
+    if (!id || !type) {
+      return NextResponse.json({ error: 'ID and type are required' }, { status: 400 });
+    }
+
+    if (type === 'credit') {
+      await CreditNoteModel.findByIdAndDelete(id);
+      return NextResponse.json({ success: true, message: 'Credit note deleted successfully' });
+    } else if (type === 'debit') {
+      await DebitNoteModel.findByIdAndDelete(id);
+      return NextResponse.json({ success: true, message: 'Debit note deleted successfully' });
+    }
+
+    return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to delete note' }, { status: 500 });
+  }
+}

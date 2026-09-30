@@ -5,15 +5,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ShoppingCart, Package, Settings, Menu } from 'lucide-react';
 import { useUIStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 
 export const BottomTabBar = () => {
   const pathname = usePathname();
   const { toggleSidebar } = useUIStore();
+  const { t } = useTranslation();
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'POS Terminal', href: '/pos', icon: ShoppingCart },
-    { name: 'Products', href: '/products', icon: Package },
+    { name: 'Product', href: '/products', icon: Package },
     { name: 'Settings', href: '/settings/system', icon: Settings },
   ];
 
@@ -39,7 +41,7 @@ export const BottomTabBar = () => {
             }`}
           >
             <Icon className={`h-5 w-5 shrink-0 transition-transform ${active ? 'scale-110' : ''}`} />
-            <span className="text-[10px] tracking-tight">{item.name}</span>
+            <span className="text-[10px] tracking-tight">{t(item.name)}</span>
           </Link>
         );
       })}
@@ -50,7 +52,7 @@ export const BottomTabBar = () => {
         className="flex flex-col items-center justify-center gap-1 flex-1 h-full text-zinc-500 dark:text-zinc-400 hover:text-primary cursor-pointer border-0 bg-transparent focus:outline-none active:scale-95 transition-all"
       >
         <Menu className="h-5 w-5 shrink-0" />
-        <span className="text-[10px] tracking-tight">Menu</span>
+        <span className="text-[10px] tracking-tight">{t('Menu')}</span>
       </button>
     </div>
   );
