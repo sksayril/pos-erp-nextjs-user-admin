@@ -127,7 +127,6 @@ export default function PurchaseOrdersPage() {
   };
 
   const handleDelete = async (id: string, poNum: string) => {
-    if (!confirm(`Are you sure you want to delete PO "${poNum}"?`)) return;
     try {
       const res = await fetch(`/api/purchases/orders?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

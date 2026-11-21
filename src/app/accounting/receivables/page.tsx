@@ -37,7 +37,7 @@ export default function ReceivablesLedgerPage() {
       const resData = await res.json();
       setData(resData);
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve accounts receivable records.');
     } finally {
       setLoading(false);
     }

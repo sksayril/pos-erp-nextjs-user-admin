@@ -93,7 +93,6 @@ export default function SalesPaymentsPage() {
   };
 
   const handleDelete = async (id: string, payNum: string) => {
-    if (!confirm(`Are you sure you want to delete payment receipt "${payNum}"?`)) return;
     try {
       const res = await fetch(`/api/sales/payments?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

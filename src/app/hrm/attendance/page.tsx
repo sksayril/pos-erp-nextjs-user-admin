@@ -42,7 +42,7 @@ export default function AttendancePage() {
         setRecords(data);
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve attendance records.');
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export default function AttendancePage() {
           if (data.length > 0) setSelectedEmpId(data[0].employeeId);
         }
       })
-      .catch(err => console.error(err));
+      .catch(() => addToast('error', 'Fetch Error', 'Failed to load employee list.'));
   }, []);
 
   useEffect(() => {

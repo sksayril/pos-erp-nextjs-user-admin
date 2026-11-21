@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/db';
-import { TransferModel } from '../../../lib/models';
+import { TransferModel, shouldSeedData } from '../../../lib/models';
 
 export async function GET(req: Request) {
   try {
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     let transfers = await TransferModel.find(query).sort({ createdAt: -1 });
 
-    if (transfers.length === 0 && Object.keys(query).length === 0) {
+    if (transfers.length === 0 && Object.keys(query).length === 0 && (await shouldSeedData())) {
       const defaultTransfers = [
         {
           transferNumber: 'TR-2026-001',

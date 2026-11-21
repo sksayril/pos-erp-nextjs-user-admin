@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectDB } from '../../../lib/db';
-import { SaleModel, ProductModel, CustomerModel } from '../../../lib/models';
+import { SaleModel, ProductModel, CustomerModel, shouldSeedData } from '../../../lib/models';
 
 export async function GET() {
   try {
     await connectDB();
     let sales = await SaleModel.find({}).sort({ createdAt: -1 });
 
-    if (sales.length === 0) {
+    if (sales.length === 0 && (await shouldSeedData())) {
       const defaultSales = [
         {
           invoiceNumber: 'INV-2026-001',

@@ -150,8 +150,6 @@ export default function SalesReturnsPage() {
   };
 
   const handleDelete = async (id: string, returnNum: string) => {
-    if (!confirm(`Are you sure you want to delete sales return ${returnNum}?`)) return;
-
     try {
       const res = await fetch(`/api/returns/sales?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

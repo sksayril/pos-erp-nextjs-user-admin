@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppShell } from '../../components/layout/AppShell';
 import { PageContainer } from '../../components/layout/PageContainer';
@@ -20,16 +20,57 @@ import {
 import { 
   TrendingUp, TrendingDown, Package, DollarSign, 
   ArrowUpRight, ArrowDownLeft, AlertCircle, ShoppingBag, 
-  CreditCard, Calendar, Users 
+  ShoppingCart, CreditCard, Calendar, Users 
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
   const [dateFilter, setDateFilter] = useState<'today' | '7days' | 'month' | 'year'>('month');
+  const [liveSales, setLiveSales] = useState<any[]>([]);
+  const [livePurchases, setLivePurchases] = useState<any[]>([]);
+  const [liveExpenses, setLiveExpenses] = useState<any[]>([]);
+  const [liveProducts, setLiveProducts] = useState<any[]>([]);
+  const [dummyDataCleared, setDummyDataCleared] = useState(false);
 
-  // Hardcoded financial totals for mock presentation matching POS ERP
-  const kpis = {
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/system/clear-dummy-data').then(r => r.json()).catch(() => ({})),
+      fetch('/api/sales').then(r => r.json()).catch(() => []),
+      fetch('/api/purchases').then(r => r.json()).catch(() => []),
+      fetch('/api/expenses').then(r => r.json()).catch(() => []),
+      fetch('/api/products').then(r => r.json()).catch(() => [])
+    ]).then(([sys, sales, purchases, expenses, products]) => {
+      if (sys?.dummyDataCleared) {
+        setDummyDataCleared(true);
+      }
+      if (Array.isArray(sales)) setLiveSales(sales);
+      if (Array.isArray(purchases)) setLivePurchases(purchases);
+      if (Array.isArray(expenses)) setLiveExpenses(expenses);
+      if (Array.isArray(products)) setLiveProducts(products);
+    });
+  }, []);
+
+  const totalSalesVal = liveSales.reduce((sum, s) => sum + (s.grandTotal || 0), 0);
+  const revenueVal = liveSales.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
+  const receivableVal = liveSales.reduce((sum, s) => sum + (s.dueAmount || 0), 0);
+  const purchasesVal = livePurchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
+  const expensesVal = liveExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const stockVal = liveProducts.reduce((sum, pr) => sum + ((pr.costPrice || pr.purchasePrice || 0) * (pr.openingStock || 0)), 0);
+
+  // Financial totals: live calculation when dummy data is cleared, else presentation mock
+  const kpis = dummyDataCleared ? {
+    revenue: revenueVal,
+    salesReturn: 0,
+    purchaseReturn: 0,
+    profit: revenueVal - purchasesVal - expensesVal,
+    totalSales: totalSalesVal,
+    totalPurchases: purchasesVal,
+    totalExpenses: expensesVal,
+    receivable: receivableVal,
+    payable: 0,
+    stockValue: stockVal
+  } : {
     revenue: 48590.20,
     salesReturn: 1250.00,
     purchaseReturn: 850.00,
@@ -71,7 +112,9 @@ export default function DashboardPage() {
 
   const COLORS = ['#7c3aed', '#ea580c', '#3b82f6'];
 
-  const lowStock = mockProducts.filter(p => p.openingStock <= p.minStock);
+  const lowStock = dummyDataCleared 
+    ? liveProducts.filter(p => (p.openingStock || 0) <= (p.minStock || 5))
+    : mockProducts.filter(p => p.openingStock <= p.minStock);
 
   const dateFilterLabels = {
     today: 'Today',
@@ -93,10 +136,10 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between select-none">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              WELCOME <span className="text-primary font-extrabold uppercase">{user?.name || 'ADMIN'}</span>
+              WELCOME <span className="text-primary font-extrabold uppercase" suppressHydrationWarning>{user?.name || 'ADMIN'}</span>
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              ERP Control Center — Role: <span className="font-semibold text-primary">{user?.role}</span>
+              ERP Control Center — Role: <span className="font-semibold text-primary" suppressHydrationWarning>{user?.role || 'Super Admin'}</span>
             </p>
           </div>
           
@@ -121,60 +164,60 @@ export default function DashboardPage() {
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4 select-none">
           
           {/* Revenue */}
-          <Card className="hover:border-primary/30 transition-all">
+          <Card className="hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl bg-card border border-border/80 shadow-xs">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Revenue</p>
-                <h3 className="text-lg sm:text-2xl font-extrabold text-foreground mt-1.5">
+                <h3 className="text-lg sm:text-2xl font-black text-foreground mt-1.5 tracking-tight">
                   Rs. {kpis.revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </h3>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
                 <DollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </CardContent>
           </Card>
 
           {/* Sales Return */}
-          <Card className="hover:border-secondary/30 transition-all">
+          <Card className="hover:border-sky-500/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl bg-card border border-border/80 shadow-xs">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sales Return</p>
-                <h3 className="text-lg sm:text-2xl font-extrabold text-foreground mt-1.5">
+                <h3 className="text-lg sm:text-2xl font-black text-foreground mt-1.5 tracking-tight">
                   Rs. {kpis.salesReturn.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </h3>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 shadow-xs shrink-0">
                 <ArrowDownLeft className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </CardContent>
           </Card>
 
           {/* Purchase Return */}
-          <Card className="hover:border-info/30 transition-all">
+          <Card className="hover:border-indigo-500/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl bg-card border border-border/80 shadow-xs">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Purchase Return</p>
-                <h3 className="text-lg sm:text-2xl font-extrabold text-foreground mt-1.5">
+                <h3 className="text-lg sm:text-2xl font-black text-foreground mt-1.5 tracking-tight">
                   Rs. {kpis.purchaseReturn.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </h3>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-info/10 flex items-center justify-center text-info">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 shadow-xs shrink-0">
                 <ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </CardContent>
           </Card>
 
           {/* Net Profit */}
-          <Card className="hover:border-success/30 transition-all">
+          <Card className="hover:border-emerald-500/40 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl bg-card border border-border/80 shadow-xs">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Net Profit</p>
-                <h3 className="text-lg sm:text-2xl font-extrabold text-foreground mt-1.5">
+                <h3 className="text-lg sm:text-2xl font-black text-foreground mt-1.5 tracking-tight">
                   Rs. {kpis.profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </h3>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-success/10 flex items-center justify-center text-success">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
                 <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </CardContent>
@@ -184,18 +227,25 @@ export default function DashboardPage() {
         {/* Small KPI Mini Grid */}
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 select-none">
           {[
-            { label: 'Sales', val: kpis.totalSales, color: 'text-primary' },
-            { label: 'Purchases', val: kpis.totalPurchases, color: 'text-zinc-700' },
-            { label: 'Expenses', val: kpis.totalExpenses, color: 'text-rose-500' },
-            { label: 'Receivables', val: kpis.receivable, color: 'text-blue-500' },
-            { label: 'Payables', val: kpis.payable, color: 'text-orange-500' },
-            { label: 'Stock Value', val: kpis.stockValue, color: 'text-emerald-500' },
+            { label: 'Sales', val: kpis.totalSales, color: 'text-primary', badgeBg: 'bg-primary/10 text-primary border-primary/20', icon: ShoppingBag },
+            { label: 'Purchases', val: kpis.totalPurchases, color: 'text-indigo-600', badgeBg: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20', icon: ShoppingCart },
+            { label: 'Expenses', val: kpis.totalExpenses, color: 'text-rose-600', badgeBg: 'bg-rose-500/10 text-rose-600 border-rose-500/20', icon: CreditCard },
+            { label: 'Receivables', val: kpis.receivable, color: 'text-blue-600', badgeBg: 'bg-blue-500/10 text-blue-600 border-blue-500/20', icon: ArrowDownLeft },
+            { label: 'Payables', val: kpis.payable, color: 'text-amber-600', badgeBg: 'bg-amber-500/10 text-amber-600 border-amber-500/20', icon: ArrowUpRight },
+            { label: 'Stock Value', val: kpis.stockValue, color: 'text-emerald-600', badgeBg: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', icon: Package },
           ].map((item, idx) => (
-            <Card key={idx} className="bg-card/40 p-4 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.label}</span>
-              <span className={`text-base font-extrabold mt-1 ${item.color}`}>
-                Rs. {item.val.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-              </span>
+            <Card key={idx} className="bg-card border border-border/80 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</span>
+                <div className={`h-7 w-7 rounded-lg border flex items-center justify-center shrink-0 ${item.badgeBg}`}>
+                  <item.icon className="h-3.5 w-3.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <span className={`text-base sm:text-lg font-black tracking-tight ${item.color}`}>
+                  Rs. {item.val.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </span>
+              </div>
             </Card>
           ))}
         </div>
@@ -204,7 +254,7 @@ export default function DashboardPage() {
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
           
           {/* Cash Flow Line Chart */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 rounded-2xl border border-border/80 shadow-xs">
             <CardHeader>
               <CardTitle className="text-base font-bold">Cash Flow Overview</CardTitle>
             </CardHeader>
@@ -234,7 +284,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Allocation Donut Chart */}
-          <Card>
+          <Card className="rounded-2xl border border-border/80 shadow-xs">
             <CardHeader>
               <CardTitle className="text-base font-bold">ERP Financial Allocation</CardTitle>
             </CardHeader>
@@ -275,7 +325,7 @@ export default function DashboardPage() {
         {/* Extra Charts row: Profit Trend */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
           {/* Monthly Profit trend */}
-          <Card>
+          <Card className="rounded-2xl border border-border/80 shadow-xs">
             <CardHeader>
               <CardTitle className="text-base font-bold">Monthly Net Profit Trend</CardTitle>
             </CardHeader>
@@ -293,7 +343,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* System Notifications/Alerts widget */}
-          <Card>
+          <Card className="rounded-2xl border border-border/80 shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between pb-2 shrink-0">
               <CardTitle className="text-base font-bold">Stock Alerts</CardTitle>
               {lowStock.length > 0 && (
@@ -332,7 +382,7 @@ export default function DashboardPage() {
         {/* Dashboard Widgets section */}
         <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
           {/* Recent Sales Table */}
-          <Card>
+          <Card className="rounded-2xl border border-border/80 shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base font-bold">Recent Invoices</CardTitle>
               <Link href="/sales">
@@ -370,7 +420,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* Top Selling Products */}
-          <Card>
+          <Card className="rounded-2xl border border-border/80 shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base font-bold">Top Selling Products</CardTitle>
               <Link href="/products">

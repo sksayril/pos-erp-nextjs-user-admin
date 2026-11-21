@@ -81,7 +81,6 @@ export default function PriceListsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete price rule "${name}"?`)) return;
     try {
       const res = await fetch(`/api/products/prices?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

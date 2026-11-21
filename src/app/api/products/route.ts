@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/db';
-import { ProductModel } from '../../../lib/models';
+import { ProductModel, shouldSeedData } from '../../../lib/models';
 
 export async function GET() {
   try {
     await connectDB();
     let products = await ProductModel.find({}).sort({ createdAt: -1 });
 
-    if (products.length === 0) {
+    if (products.length === 0 && (await shouldSeedData())) {
       const initialProducts = [
         {
           name: 'MacBook Pro M3 Max 16"',

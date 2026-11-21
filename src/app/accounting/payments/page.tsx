@@ -29,7 +29,7 @@ export default function PaymentsHistoryPage() {
       const data = await res.json();
       if (Array.isArray(data)) setTransactions(data);
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve transaction payments data.');
     } finally {
       setLoading(false);
     }

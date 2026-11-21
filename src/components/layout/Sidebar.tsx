@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { navigationConfig, getActiveParentName } from '../../lib/navigation';
@@ -36,6 +36,11 @@ const permissionMap: Record<string, string> = {
 const UNLOCKED_ALWAYS = ['Dashboard', 'Documentation'];
 
 export const Sidebar = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const pathname = usePathname();
   const router = useRouter();
   const { sidebarCollapsed, sidebarOpen, toggleSidebar } = useUIStore();
@@ -44,7 +49,7 @@ export const Sidebar = () => {
   const { isSubscribed, activationKey, setSubscriptionModalOpen } = useSubscriptionStore();
   const { t } = useTranslation();
   
-  const role = user?.role || 'Super Admin';
+  const role = mounted && user?.role ? user.role : 'Super Admin';
 
   const activeParent = getActiveParentName(pathname);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
@@ -82,7 +87,7 @@ export const Sidebar = () => {
         const hasSubItems = item.subItems && item.subItems.length > 0;
         const isExpanded = expandedMenus[item.name];
         const isActive = item.href ? isLinkActive(item.href) : getActiveParentName(pathname) === item.name;
-        const isLocked = !isSubscribed && !UNLOCKED_ALWAYS.includes(item.name);
+        const isLocked = mounted ? (!isSubscribed && !UNLOCKED_ALWAYS.includes(item.name)) : false;
 
         if (sidebarCollapsed) {
           return (
@@ -93,8 +98,8 @@ export const Sidebar = () => {
                 title={t(item.name)}
                 className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors cursor-pointer relative ${
                   isActive
-                    ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
-                    : 'text-zinc-650 dark:text-zinc-400 hover:bg-primary/10 hover:text-primary'
+                    ? 'bg-primary text-white font-bold shadow-xs'
+                    : 'text-black hover:bg-zinc-100 hover:text-primary'
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -120,15 +125,15 @@ export const Sidebar = () => {
                       toggleMenu(item.name);
                     }
                   }}
-                  className={`flex w-full items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer group ${
+                  className={`flex w-full items-center justify-between px-3 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer group ${
                     isActive 
-                      ? 'bg-primary/10 text-primary font-bold' 
-                      : 'text-zinc-700 dark:text-zinc-300 hover:bg-primary/5 hover:text-primary'
+                      ? 'bg-primary/10 text-primary font-black' 
+                      : 'text-black hover:bg-zinc-100 hover:text-primary'
                   } ${isLocked ? 'opacity-80' : ''}`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-primary' : 'text-zinc-500 group-hover:text-primary'}`} />
-                    <span>{t(item.name)}</span>
+                    <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? 'text-primary' : 'text-black group-hover:text-primary'}`} />
+                    <span className={isActive ? 'text-primary font-black' : 'text-black font-bold group-hover:text-primary'}>{t(item.name)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {isLocked ? (
@@ -136,25 +141,25 @@ export const Sidebar = () => {
                         <Lock className="h-2.5 w-2.5" /> {t('Lock')}
                       </span>
                     ) : isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500 group-hover:text-primary" />
+                      <ChevronDown className="h-4 w-4 text-black group-hover:text-primary" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500 group-hover:text-primary" />
+                      <ChevronRight className="h-4 w-4 text-black group-hover:text-primary" />
                     )}
                   </div>
                 </button>
 
                 {isExpanded && !isLocked && (
-                  <div className="mt-1 ml-4 pl-3 border-l border-zinc-200 dark:border-zinc-800 space-y-0.5 animate-in slide-in-from-left-2 duration-150">
+                  <div className="mt-1 ml-4 pl-3 border-l-2 border-zinc-300 space-y-0.5 animate-in slide-in-from-left-2 duration-150">
                     {item.subItems!.map((sub) => {
                       const isSubActive = pathname === sub.href;
                       return (
                         <Link
                           key={sub.name}
                           href={sub.href}
-                          className={`flex items-center w-full px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                          className={`flex items-center w-full px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
                             isSubActive
-                              ? 'text-primary bg-primary/10 font-bold pl-4'
-                              : 'text-zinc-650 dark:text-zinc-400 hover:text-primary hover:bg-primary/5 hover:pl-4'
+                              ? 'text-primary bg-primary/10 font-black pl-4'
+                              : 'text-black hover:text-primary hover:bg-zinc-100 hover:pl-4'
                           }`}
                         >
                           {t(sub.name)}
@@ -168,15 +173,15 @@ export const Sidebar = () => {
               <Link
                 href={isLocked ? '#' : item.href!}
                 onClick={(e) => handleLockedClick(e, item.name)}
-                className={`flex w-full items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg transition-all ${
+                className={`flex w-full items-center justify-between px-3 py-2 text-sm font-bold rounded-lg transition-all ${
                   isActive
-                    ? 'bg-primary text-primary-foreground font-bold shadow-xs'
-                    : 'text-zinc-700 dark:text-zinc-300 hover:bg-primary/5 hover:text-primary'
+                    ? 'bg-primary text-white font-black shadow-xs'
+                    : 'text-black hover:bg-zinc-100 hover:text-primary'
                 } ${isLocked ? 'opacity-80' : ''}`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-current' : 'text-zinc-500 hover:text-primary'}`} />
-                  <span>{t(item.name)}</span>
+                  <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-black group-hover:text-primary'}`} />
+                  <span className={isActive ? 'text-white font-black' : 'text-black font-bold group-hover:text-primary'}>{t(item.name)}</span>
                 </div>
                 {isLocked && (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -200,18 +205,18 @@ export const Sidebar = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-card border-r border-border/80 transition-all duration-300 lg:static ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-white border-r border-border/80 transition-all duration-300 lg:static ${
           sidebarCollapsed ? 'w-16' : 'w-64'
         } ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-border/80 bg-card">
+        <div className="flex h-16 items-center justify-between px-6 border-b border-border/80 bg-white">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
               <span className="font-extrabold text-base">P</span>
             </div>
             {!sidebarCollapsed && (
-              <span className="text-base font-bold tracking-tight text-foreground">
+              <span className="text-base font-bold tracking-tight text-black">
                 POS <span className="text-primary">ERP</span>
               </span>
             )}
@@ -225,8 +230,8 @@ export const Sidebar = () => {
         </div>
 
         {/* Subscription Lock Banner (when not subscribed) */}
-        {!sidebarCollapsed && !isSubscribed && (
-          <div className="m-3 p-3 rounded-xl bg-gradient-to-br from-amber-500/10 to-primary/10 border border-amber-500/30 text-xs space-y-2 select-none animate-in fade-in">
+        {mounted && !sidebarCollapsed && !isSubscribed && (
+          <div className="m-3 p-3 rounded-xl bg-gradient-to-br from-amber-500/10 to-primary/10 border border-amber-500/30 text-xs space-y-2 select-none animate-in fade-in" suppressHydrationWarning>
             <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
               <Lock className="h-4 w-4 shrink-0" />
               <span>Subscription Required</span>
@@ -246,8 +251,8 @@ export const Sidebar = () => {
         )}
 
         {/* Active Activation Code Banner (when subscribed) */}
-        {!sidebarCollapsed && isSubscribed && (
-          <div className="m-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1 select-none">
+        {mounted && !sidebarCollapsed && isSubscribed && (
+          <div className="m-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1 select-none" suppressHydrationWarning>
             <div className="flex items-center justify-between">
               <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 text-[11px]">
                 <ShieldCheck className="h-3.5 w-3.5" /> Active License
@@ -256,7 +261,7 @@ export const Sidebar = () => {
                 1-YEAR
               </span>
             </div>
-            <div className="font-mono text-[10px] font-bold text-foreground truncate">
+            <div className="font-mono text-[10px] font-bold text-foreground truncate" suppressHydrationWarning>
               Key: {activationKey || 'ERP-ACTV-8942-X92F-2026'}
             </div>
           </div>
@@ -268,15 +273,15 @@ export const Sidebar = () => {
         </div>
 
         {/* User Footer Panel */}
-        {!sidebarCollapsed && user && (
-          <div className="p-4 border-t border-border/60 bg-muted/20">
+        {mounted && !sidebarCollapsed && user && (
+          <div className="p-4 border-t border-border/60 bg-muted/20" suppressHydrationWarning>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+              <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0" suppressHydrationWarning>
                 {user.name.charAt(0)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold truncate text-foreground leading-tight">{user.name}</p>
-                <p className="text-[10px] text-muted-foreground truncate mt-0.5">{user.role}</p>
+                <p className="text-xs font-bold truncate text-black leading-tight" suppressHydrationWarning>{user.name}</p>
+                <p className="text-[10px] text-zinc-600 truncate mt-0.5 font-medium" suppressHydrationWarning>{user.role}</p>
               </div>
             </div>
           </div>

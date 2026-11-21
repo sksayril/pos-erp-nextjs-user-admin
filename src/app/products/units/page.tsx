@@ -81,7 +81,6 @@ export default function UnitsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete unit "${name}"?`)) return;
     try {
       const res = await fetch(`/api/products/units?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

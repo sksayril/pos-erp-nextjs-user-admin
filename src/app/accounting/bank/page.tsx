@@ -86,7 +86,7 @@ export default function BankJournalPage() {
         if (banks.length > 0 && !bankName) setBankName(banks[0].name);
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve banking data.');
     } finally {
       setLoading(false);
     }

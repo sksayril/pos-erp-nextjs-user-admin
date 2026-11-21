@@ -113,7 +113,6 @@ export default function TaxSettingsPage() {
   };
 
   const handleDelete = async (tax: any) => {
-    if (!confirm(`Are you sure you want to remove ${tax.name}?`)) return;
     try {
       const res = await fetch(`/api/settings/tax?id=${tax._id}`, { method: 'DELETE' });
       if (res.ok) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/db';
-import { CustomerModel } from '../../../lib/models';
+import { CustomerModel, shouldSeedData } from '../../../lib/models';
 import { mockCustomers } from '../../../lib/mockData';
 
 export async function GET() {
@@ -9,23 +9,36 @@ export async function GET() {
     let customers = await CustomerModel.find().sort({ createdAt: -1 });
 
     if (customers.length === 0) {
-      // Seed default customers
-      const defaultData = mockCustomers.map(c => ({
-        name: c.name,
-        phone: c.phone,
-        email: c.email || '',
-        address: c.address || '',
-        creditLimit: c.creditLimit || 0,
-        outstandingBalance: c.outstandingBalance || 0,
-        status: 'Active'
-      }));
-      customers = await CustomerModel.insertMany(defaultData);
+      if (await shouldSeedData()) {
+        // Seed default customers
+        const defaultData = mockCustomers.map(c => ({
+          name: c.name,
+          phone: c.phone,
+          email: c.email || '',
+          address: c.address || '',
+          creditLimit: c.creditLimit || 0,
+          outstandingBalance: c.outstandingBalance || 0,
+          status: 'Active'
+        }));
+        customers = await CustomerModel.insertMany(defaultData);
+      } else {
+        const walkIn = await CustomerModel.create({
+          name: 'Walk-In Customer',
+          phone: '0000000000',
+          email: 'walkin@erp.com',
+          address: 'Main Store Counter',
+          creditLimit: 0,
+          outstandingBalance: 0,
+          status: 'Active'
+        });
+        customers = [walkIn];
+      }
     }
 
     return NextResponse.json(customers);
   } catch (error: any) {
     console.error('Customer GET API Error:', error);
-    return NextResponse.json(mockCustomers);
+    return NextResponse.json([{ name: 'Walk-In Customer', phone: '0000000000', status: 'Active' }]);
   }
 }
 

@@ -55,7 +55,7 @@ export default function JournalEntriesPage() {
         }
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve journal entries.');
     } finally {
       setLoading(false);
     }

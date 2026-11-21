@@ -203,6 +203,9 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'Quick Actions': 'Quick Actions',
     'Low Stock Alert': 'Low Stock Alert',
     'Top Selling Products': 'Top Selling Products',
+    'Clear All Dummy Data': 'Clear All Dummy Data',
+    'Clear Dummy Data': 'Clear Dummy Data',
+    'Dummy Data Removed': 'Dummy Data Removed',
   },
 
   es: {
@@ -394,6 +397,9 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'Quick Actions': 'Acciones Rápidas',
     'Low Stock Alert': 'Alerta de Stock Bajo',
     'Top Selling Products': 'Productos Más Vendidos',
+    'Clear All Dummy Data': 'Borrar Todos los Datos de Prueba',
+    'Clear Dummy Data': 'Borrar Datos de Prueba',
+    'Dummy Data Removed': 'Datos de Prueba Eliminados',
   },
 
   bn: {
@@ -585,5 +591,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'Quick Actions': 'দ্রুত অ্যাকশন',
     'Low Stock Alert': 'স্বল্প স্টক সতর্কতা',
     'Top Selling Products': 'সর্বাধিক বিক্রিত পণ্য',
+    'Clear All Dummy Data': 'সকল ডামি ডাটা মুছে ফেলুন',
+    'Clear Dummy Data': 'ডামি ডাটা রিমুভ করুন',
+    'Dummy Data Removed': 'ডামি ডাটা সফলভাবে মুছে ফেলা হয়েছে',
   }
 };

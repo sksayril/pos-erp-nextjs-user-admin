@@ -12,7 +12,7 @@ import { mockWarehouses } from '../../../lib/mockData';
 import { User, UserRole } from '../../../lib/types';
 import {
   UserPlus, Shield, Building2, Phone, Mail, Lock,
-  Users, CheckCircle2, XCircle, Eye, EyeOff, Key
+  Users, CheckCircle2, XCircle, Eye, EyeOff, Key, Trash2, AlertTriangle
 } from 'lucide-react';
 
 const ALL_ROLES: UserRole[] = [
@@ -67,8 +67,35 @@ export default function SettingsUsersPage() {
   const [viewUser, setViewUser] = useState<UserWithPassword | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserWithPassword | null>(null);
   const [showPwd, setShowPwd] = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleClearDummyData = async () => {
+    setIsClearing(true);
+    try {
+      const res = await fetch('/api/system/clear-dummy-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: currentUser?.email })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        addToast('success', 'Dummy Data Purged', 'All mock transactions, products, and sample users have been cleared.');
+        setClearModalOpen(false);
+        setTimeout(() => {
+          window.location.reload();
+        }, 700);
+      } else {
+        addToast('error', 'Error', data.error || 'Failed to clear dummy data.');
+      }
+    } catch {
+      addToast('error', 'Error', 'Failed to reach backend server.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   // Sync with live MongoDB users database on mount
   React.useEffect(() => {
@@ -288,10 +315,21 @@ export default function SettingsUsersPage() {
             onDelete={isSuperAdmin ? (u) => setDeleteTarget(u) : undefined}
             headerActions={
               isSuperAdmin ? (
-                <Button variant="primary" size="sm" onClick={openAdd}>
-                  <UserPlus className="h-4 w-4" />
-                  Add User
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setClearModalOpen(true)}
+                    className="flex items-center gap-1.5 font-bold text-rose-600 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  >
+                    <Trash2 className="h-4 w-4 text-rose-500" />
+                    <span>Clear Dummy Data</span>
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={openAdd}>
+                    <UserPlus className="h-4 w-4" />
+                    Add User
+                  </Button>
+                </div>
               ) : undefined
             }
           />
@@ -522,6 +560,54 @@ export default function SettingsUsersPage() {
           confirmText="Delete User"
           variant="destructive"
         />
+
+        {/* Clear Dummy Data Modal */}
+        <Modal
+          isOpen={clearModalOpen}
+          onClose={() => !isClearing && setClearModalOpen(false)}
+          title="Clear All Dummy & Demo Data?"
+          size="md"
+          footer={
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setClearModalOpen(false)}
+                disabled={isClearing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleClearDummyData}
+                disabled={isClearing}
+                className="flex items-center gap-2 font-bold"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isClearing ? 'Clearing Data...' : 'Yes, Clear All Dummy Data'}</span>
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4 py-1">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200">
+              <AlertTriangle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-bold">Permanent clean slate reset</p>
+                <p className="text-muted-foreground dark:text-rose-300/80 leading-relaxed">
+                  This will permanently clear all demo products, sample sales, purchase orders, quotations, expenses, and demo mock accounts.
+                </p>
+              </div>
+            </div>
+            <div className="p-3 rounded-xl bg-muted/40 border border-border/70 text-xs space-y-2">
+              <p className="font-bold text-foreground">🛡 Protected Credentials &amp; License:</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
+                <li>Your current account ({currentUser?.email || 'admin'}) is preserved</li>
+                <li>Your ERP subscription license activation key is kept active</li>
+                <li>System settings and store profile remain intact</li>
+              </ul>
+            </div>
+          </div>
+        </Modal>
       </PageContainer>
     </AppShell>
   );

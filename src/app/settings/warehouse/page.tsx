@@ -137,7 +137,6 @@ export default function WarehouseSettingsPage() {
   };
 
   const handleDelete = async (wh: any) => {
-    if (!confirm(`Are you sure you want to delete ${wh.name}?`)) return;
     try {
       const res = await fetch(`/api/settings/warehouse?id=${wh._id}`, { method: 'DELETE' });
       if (res.ok) {

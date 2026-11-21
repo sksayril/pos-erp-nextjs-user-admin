@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { 
   ShieldCheck, Mail, Lock, Eye, EyeOff, AlertCircle, 
-  Users, UserPlus, Sparkles, Globe 
+  UserPlus, Sparkles, Globe 
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -31,16 +31,6 @@ export default function LoginPage() {
   React.useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Quick-fill for demo users
-  const quickFillUsers = [
-    { label: 'Super Admin', email: 'aryan@erp.com', password: 'password123' },
-    { label: 'Admin', email: 'priya@erp.com', password: 'password123' },
-    { label: 'Manager', email: 'rahul@erp.com', password: 'password123' },
-    { label: 'Cashier', email: 'sneha@erp.com', password: 'password123' },
-    { label: 'Accountant', email: 'karan@erp.com', password: 'password123' },
-    { label: 'HR Manager', email: 'ananya@erp.com', password: 'password123' },
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,34 +218,6 @@ export default function LoginPage() {
                   <UserPlus className="h-3.5 w-3.5" /> Create Super Admin Account
                 </Button>
               </Link>
-            </div>
-
-            {/* Quick Fill Demo Users */}
-            <div className="pt-2 border-t border-border/50">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Quick Fill — Demo Accounts</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {quickFillUsers.map(u => (
-                  <button
-                    key={u.email}
-                    type="button"
-                    onClick={() => {
-                      setEmail(u.email);
-                      setPassword(u.password);
-                      setError('');
-                    }}
-                    className="text-left px-2.5 py-2 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all group cursor-pointer"
-                  >
-                    <div className="text-xs font-bold text-foreground group-hover:text-primary truncate">{u.label}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{u.email}</div>
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center mt-2.5">
-                Demo accounts password: <code className="font-mono font-bold text-foreground bg-muted px-1 py-0.5 rounded">password123</code>
-              </p>
             </div>
           </CardContent>
         </Card>

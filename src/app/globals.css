@@ -175,3 +175,38 @@ body {
     margin: 1.5cm 1cm 1.5cm 1cm;
   }
 }
+
+/* Razorpay Checkout Containment & Fallback Styles */
+.razorpay-container {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+}
+
+.razorpay-container iframe,
+.razorpay-checkout-frame {
+  max-width: 480px !important;
+  max-height: 90vh !important;
+  width: 100% !important;
+  height: 650px !important;
+  margin: auto !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.razorpay-container svg,
+.razorpay-container img,
+[class*="razorpay"] svg,
+[class*="razorpay"] img {
+  max-width: 80px !important;
+  max-height: 80px !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+

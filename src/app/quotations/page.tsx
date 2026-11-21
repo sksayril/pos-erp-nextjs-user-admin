@@ -44,8 +44,6 @@ export default function QuotationsListPage() {
   }, []);
 
   const handleDelete = async (id: string, quoteNum: string) => {
-    if (!confirm(`Are you sure you want to delete quotation ${quoteNum}?`)) return;
-
     try {
       const res = await fetch(`/api/quotations/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -65,8 +63,6 @@ export default function QuotationsListPage() {
       addToast('info', 'Already Converted', 'This quotation has already been converted to a sales order.');
       return;
     }
-
-    if (!confirm(`Convert quotation ${quote.quotationNumber} into a live Sales Invoice?`)) return;
 
     try {
       setIsConverting(true);

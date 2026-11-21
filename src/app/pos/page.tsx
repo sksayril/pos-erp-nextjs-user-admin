@@ -24,6 +24,7 @@ export default function POSPage() {
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
 
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'products' | 'cart'>('products');
   const [productsList, setProductsList] = useState<any[]>(mockProducts);
   const [customersList, setCustomersList] = useState<any[]>(mockCustomers);
@@ -55,25 +56,30 @@ export default function POSPage() {
   // Held Bills Dialog
   const [heldBillsOpen, setHeldBillsOpen] = useState(false);
 
+  // Mounted flag to eliminate SSR / Client hydration mismatches
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Load products & customers from DB
   useEffect(() => {
     fetch('/api/products')
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setProductsList(data);
         }
       })
-      .catch((err) => console.error('Error fetching live products:', err));
+      .catch(() => addToast('warning', 'Notice', 'Could not load live products from server.'));
 
     fetch('/api/customers')
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setCustomersList(data);
         }
       })
-      .catch((err) => console.error('Error fetching live customers:', err));
+      .catch(() => addToast('warning', 'Notice', 'Could not load live customers from server.'));
   }, []);
 
   // Close customer dropdown on click outside
@@ -266,10 +272,9 @@ export default function POSPage() {
       setCheckoutResult(savedSale || localSale || salePayload);
       addToast('success', 'Checkout Complete', `Sale invoice ${salePayload.invoiceNumber} recorded.`);
     } catch (error: any) {
-      console.error('Checkout Error:', error);
       const localSale = checkout(paymentMethod, paid);
       setCheckoutResult(localSale || salePayload);
-      addToast('success', 'Checkout Complete', `Sale invoice ${salePayload.invoiceNumber} recorded.`);
+      addToast('warning', 'Saved in Offline Mode', `Sale invoice ${salePayload.invoiceNumber} recorded in local store.`);
     }
   };
 
@@ -293,10 +298,10 @@ export default function POSPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-zinc-100 dark:bg-zinc-950 overflow-hidden text-sm">
+    <div className="flex flex-col h-screen w-screen bg-[#f1f5f9] overflow-hidden text-sm">
       
       {/* POS Top Toolbar */}
-      <div className="flex h-16 items-center justify-between bg-card border-b border-border px-4 sm:px-6 select-none shrink-0">
+      <div className="flex h-16 items-center justify-between bg-white dark:bg-card border-b border-border px-4 sm:px-6 select-none shrink-0 shadow-xs">
         <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/dashboard" className="flex items-center gap-1.5 text-zinc-500 hover:text-foreground font-bold transition-colors">
             <ArrowLeft className="h-4.5 w-4.5" />
@@ -310,7 +315,7 @@ export default function POSPage() {
             <Badge variant="outline" className="sm:hidden bg-primary/5 text-primary border-primary/20 font-bold px-2 py-0.5 text-[10px]">
               T01
             </Badge>
-            <span className="hidden md:inline text-xs text-muted-foreground">Cashier: <strong className="text-foreground">{user?.name || 'Staff'}</strong></span>
+            <span className="hidden md:inline text-xs text-muted-foreground">Cashier: <strong className="text-foreground" suppressHydrationWarning>{mounted ? (user?.name || 'Staff') : 'Staff'}</strong></span>
           </div>
         </div>
 
@@ -386,7 +391,7 @@ export default function POSPage() {
                 placeholder="Search Product/SKU (F8)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-4 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+                className="h-10 w-full rounded-xl border border-border/80 bg-white dark:bg-card pl-9 pr-4 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-xs"
               />
             </div>
             
@@ -398,13 +403,13 @@ export default function POSPage() {
                 placeholder="Barcode/SKU Scan..."
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
-                className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-4 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+                className="h-10 w-full rounded-xl border border-border/80 bg-white dark:bg-card pl-9 pr-4 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary shadow-xs"
               />
               <button type="submit" className="hidden" />
             </form>
 
             {/* Warehouse display */}
-            <div className="hidden md:flex h-10 rounded-lg border border-border bg-muted/20 px-3 items-center justify-between text-xs col-span-2 md:col-span-1">
+            <div className="hidden md:flex h-10 rounded-xl border border-border/80 bg-white dark:bg-card px-3 items-center justify-between text-xs col-span-2 md:col-span-1 shadow-xs">
               <span className="text-muted-foreground">Location:</span>
               <span className="font-bold text-foreground">Main Warehouse</span>
             </div>
@@ -416,10 +421,10 @@ export default function POSPage() {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`h-9 px-4 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                className={`h-9 px-4 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs ${
                   selectedCategory === cat.id
                     ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-card text-muted-foreground hover:bg-muted border border-border/80'
+                    : 'bg-white dark:bg-card text-muted-foreground hover:bg-muted border border-border/80'
                 }`}
               >
                 {cat.name}
@@ -437,7 +442,7 @@ export default function POSPage() {
                     <div
                       key={product.id || product._id}
                       onClick={() => addToCart(product)}
-                      className="group flex flex-col justify-between p-3.5 bg-card border border-border hover:border-primary/45 rounded-xl cursor-pointer transition-all hover:shadow-xs active:scale-[0.98]"
+                      className="group flex flex-col justify-between p-3.5 bg-white dark:bg-card border border-border/80 hover:border-primary/50 rounded-2xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] shadow-xs"
                     >
                       <div className="space-y-1">
                         {product.image && (
@@ -496,7 +501,7 @@ export default function POSPage() {
         </div>
 
         {/* Right Side: Cart Summary Checkout panel */}
-        <div className={`w-full lg:w-96 bg-card lg:border-l border-border flex flex-col h-full shrink-0 ${activeTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`w-full lg:w-96 bg-white dark:bg-card lg:border-l border-border flex flex-col h-full shrink-0 shadow-xs ${activeTab === 'cart' ? 'flex' : 'hidden lg:flex'}`}>
           
           {/* Customer selector header */}
           <div className="p-4 border-b border-border/80 space-y-2 shrink-0 select-none">
@@ -886,7 +891,7 @@ export default function POSPage() {
                 <p>INVOICE: {checkoutResult?.invoiceNumber || 'INV-2026'}</p>
                 <p>DATE: {checkoutResult?.date || new Date().toISOString().split('T')[0]}</p>
                 <p>CUSTOMER: {selectedCustomer?.name || 'Walk-In Customer'}</p>
-                <p>CASHIER: {user?.name || 'Staff'}</p>
+                <p suppressHydrationWarning>CASHIER: {mounted ? (user?.name || 'Staff') : 'Staff'}</p>
               </div>
 
               <div className="border-t border-dashed border-zinc-300 my-2" />

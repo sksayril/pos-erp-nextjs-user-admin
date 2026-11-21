@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/db';
-import { QuotationModel } from '../../../lib/models';
+import { QuotationModel, shouldSeedData } from '../../../lib/models';
 
 export async function GET(req: Request) {
   try {
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
 
     let quotations = await QuotationModel.find(query).sort({ createdAt: -1 });
 
-    if (quotations.length === 0 && Object.keys(query).length === 0) {
+    if (quotations.length === 0 && Object.keys(query).length === 0 && (await shouldSeedData())) {
       const defaultQuotations = [
         {
           quotationNumber: 'QT-2026-001',

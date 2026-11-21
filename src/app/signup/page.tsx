@@ -42,7 +42,7 @@ export default function SignUpPage() {
   const [locationError, setLocationError] = useState('');
 
   // Subscription States
-  const [subscriptionChoice, setSubscriptionChoice] = useState<'instant' | 'manualKey'>('instant');
+  const [subscriptionChoice, setSubscriptionChoice] = useState<'instant' | 'manualKey' | 'razorpay'>('instant');
   const [activationKeyInput, setActivationKeyInput] = useState('');
   const [isCheckingSub, setIsCheckingSub] = useState(false);
   const [subscriptionVerified, setSubscriptionVerified] = useState(false);
@@ -203,7 +203,28 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      if (subscriptionChoice === 'manualKey') {
+      if (subscriptionChoice === 'instant') {
+        // Direct Instant 1-Click License Activation
+        const verifyRes = await fetch('/api/subscription/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.trim(),
+            businessName: businessName.trim(),
+            planName: '1-Year Full ERP License',
+            amount: 5999
+          })
+        });
+
+        const verifyData = await verifyRes.json();
+        if (verifyRes.ok && verifyData.success) {
+          setSubscriptionVerified(true);
+          setVerifiedActivationKey(verifyData.activationKey);
+          await completeRegistration(verifyData.activationKey);
+        } else {
+          throw new Error(verifyData.error || 'Failed to activate instant license.');
+        }
+      } else if (subscriptionChoice === 'manualKey') {
         if (!activationKeyInput.trim()) {
           setSubscriptionError('Please enter an Activation Code.');
           setIsLoading(false);
@@ -231,17 +252,17 @@ export default function SignUpPage() {
         }
         setIsLoading(false);
       } else {
-        // 1. Create Razorpay order via backend
+        // Razorpay Online Payment Flow
         const orderRes = await fetch('/api/subscription/order', { method: 'POST' });
         if (!orderRes.ok) {
-          throw new Error('Failed to create Razorpay payment order. Please check your connection.');
+          throw new Error('Failed to create Razorpay payment order. You can use 1-Click Instant License instead.');
         }
         const orderData = await orderRes.json();
 
         // 2. Load Razorpay SDK
         const scriptLoaded = await loadRazorpayScript();
         if (!scriptLoaded) {
-          throw new Error('Razorpay SDK failed to load. Please check your internet connection.');
+          throw new Error('Razorpay SDK failed to load. Please use 1-Click Instant License instead.');
         }
 
         // 3. Launch Razorpay Checkout Popup
@@ -251,12 +272,10 @@ export default function SignUpPage() {
           currency: 'INR',
           name: 'POS ERP Enterprise',
           description: '1-Year Full ERP Super Admin License',
-          image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
           order_id: orderData.orderId,
           handler: async function (response: any) {
             setIsLoading(true);
             try {
-              // Strict verification on server with cryptographic signature check
               const verifyRes = await fetch('/api/subscription/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -286,7 +305,7 @@ export default function SignUpPage() {
           modal: {
             ondismiss: function () {
               setIsLoading(false);
-              setSubscriptionError('Payment was cancelled or closed. Without verified payment, registration cannot proceed.');
+              setSubscriptionError('Payment was closed. You can use Instant 1-Click Activation to proceed.');
             }
           },
           prefill: {
@@ -302,12 +321,12 @@ export default function SignUpPage() {
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', function (response: any) {
           setIsLoading(false);
-          setSubscriptionError(`Payment failed: ${response.error.description || response.error.reason || 'Transaction could not be completed.'}`);
+          setSubscriptionError(`Payment failed: ${response.error?.description || response.error?.reason || 'Transaction could not be completed.'}`);
         });
         rzp.open();
       }
     } catch (err: any) {
-      setSubscriptionError(err.message || 'Error initializing Razorpay payment.');
+      setSubscriptionError(err.message || 'Error initializing subscription.');
       setIsLoading(false);
     }
   };
@@ -674,22 +693,33 @@ export default function SignUpPage() {
                 </div>
 
                 {/* Choice Toggle */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => { setSubscriptionChoice('instant'); setSubscriptionError(''); }}
-                    className={`p-3 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer ${subscriptionChoice === 'instant' ? 'border-primary ring-2 ring-primary/20 bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                    className={`p-3 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer ${subscriptionChoice === 'instant' ? 'border-primary ring-2 ring-primary/20 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
                   >
-                    <CreditCard className="h-4 w-4 mb-1" />
-                    Instant Subscription (₹5,999)
+                    <Zap className="h-4 w-4 mb-1 text-amber-500" />
+                    <div>Instant 1-Click</div>
+                    <span className="text-[10px] font-normal opacity-80">Free Super Admin</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => { setSubscriptionChoice('manualKey'); setSubscriptionError(''); }}
-                    className={`p-3 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer ${subscriptionChoice === 'manualKey' ? 'border-primary ring-2 ring-primary/20 bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                    className={`p-3 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer ${subscriptionChoice === 'manualKey' ? 'border-primary ring-2 ring-primary/20 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
                   >
-                    <Key className="h-4 w-4 mb-1" />
-                    Have Activation Code?
+                    <Key className="h-4 w-4 mb-1 text-primary" />
+                    <div>Activation Code</div>
+                    <span className="text-[10px] font-normal opacity-80">ERP-ACTV-...</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSubscriptionChoice('razorpay'); setSubscriptionError(''); }}
+                    className={`p-3 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer ${subscriptionChoice === 'razorpay' ? 'border-primary ring-2 ring-primary/20 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                  >
+                    <CreditCard className="h-4 w-4 mb-1 text-emerald-500" />
+                    <div>Razorpay Online</div>
+                    <span className="text-[10px] font-normal opacity-80">₹5,999 / Year</span>
                   </button>
                 </div>
 
@@ -733,8 +763,10 @@ export default function SignUpPage() {
                   >
                     {!isLoading && <ShieldCheck className="h-4 w-4" />}
                     {subscriptionChoice === 'instant' 
-                      ? 'Subscribe & Complete Registration' 
-                      : 'Verify Code & Complete Registration'}
+                      ? 'Activate Instant License & Open Dashboard' 
+                      : subscriptionChoice === 'manualKey'
+                        ? 'Verify Code & Complete Registration'
+                        : 'Pay ₹5,999 via Razorpay & Complete Registration'}
                   </Button>
                 </div>
 

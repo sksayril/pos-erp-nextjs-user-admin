@@ -37,7 +37,7 @@ export default function DayBookPage() {
         setCashAccount(cash || null);
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve day book records.');
     } finally {
       setLoading(false);
     }

@@ -117,7 +117,6 @@ export default function BatchesPage() {
   };
 
   const handleDelete = async (id: string, batchNum: string) => {
-    if (!confirm(`Are you sure you want to delete batch "${batchNum}"?`)) return;
     try {
       const res = await fetch(`/api/products/batches?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

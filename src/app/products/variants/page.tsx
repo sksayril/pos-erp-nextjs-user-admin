@@ -75,7 +75,6 @@ export default function VariantsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete variant attribute "${name}"?`)) return;
     try {
       const res = await fetch(`/api/products/variants?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

@@ -45,7 +45,7 @@ export default function PurchaseBillDetailPage() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!purchase || !confirm(`Are you sure you want to delete purchase "${purchase.purchaseNumber}"?`)) return;
+    if (!purchase) return;
     try {
       const res = await fetch(`/api/purchases?id=${purchase._id}`, { method: 'DELETE' });
       if (res.ok) {

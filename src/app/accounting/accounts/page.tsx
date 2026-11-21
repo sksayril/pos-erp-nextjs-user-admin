@@ -54,7 +54,7 @@ export default function AccountsPage() {
         setAccounts(data);
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve accounts from database.');
     } finally {
       setLoading(false);
     }
@@ -130,7 +130,6 @@ export default function AccountsPage() {
   };
 
   const handleDelete = async (acc: any) => {
-    if (!confirm(`Are you sure you want to delete ${acc.name}?`)) return;
     try {
       const res = await fetch(`/api/accounting/accounts?id=${acc._id}`, { method: 'DELETE' });
       if (res.ok) {

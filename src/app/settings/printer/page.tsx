@@ -124,7 +124,6 @@ export default function PrinterSettingsPage() {
   };
 
   const handleDelete = async (p: any) => {
-    if (!confirm(`Are you sure you want to remove ${p.printerName}?`)) return;
     try {
       const res = await fetch(`/api/settings/printer?id=${p._id}`, { method: 'DELETE' });
       if (res.ok) {

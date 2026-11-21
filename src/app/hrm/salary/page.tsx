@@ -46,7 +46,7 @@ export default function SalaryPage() {
         setSalaries(data);
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve payroll salary records.');
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export default function SalaryPage() {
           }
         }
       })
-      .catch(err => console.error(err));
+      .catch(() => addToast('error', 'Fetch Error', 'Failed to load employee list.'));
   }, []);
 
   useEffect(() => {

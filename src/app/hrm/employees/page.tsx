@@ -93,7 +93,6 @@ export default function EmployeesPage() {
 
   // Delete Employee
   const handleDelete = async (emp: any) => {
-    if (!confirm(`Are you sure you want to remove employee "${emp.name}"?`)) return;
     try {
       const res = await fetch(`/api/hrm/employees?id=${emp._id}`, { method: 'DELETE' });
       if (res.ok) {

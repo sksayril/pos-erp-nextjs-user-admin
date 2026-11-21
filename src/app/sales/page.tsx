@@ -55,7 +55,6 @@ export default function SalesListPage() {
   }, []);
 
   const handleDelete = async (id: string, invNo: string) => {
-    if (!confirm(`Are you sure you want to delete invoice "${invNo}"?`)) return;
     try {
       const res = await fetch(`/api/sales?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

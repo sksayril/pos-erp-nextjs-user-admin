@@ -122,7 +122,6 @@ export default function DebitNotesPage() {
   };
 
   const handleDelete = async (id: string, noteNo: string) => {
-    if (!confirm(`Are you sure you want to delete Debit Note ${noteNo}?`)) return;
     try {
       const res = await fetch(`/api/credit-debit-notes?id=${id}&type=debit`, {
         method: 'DELETE'

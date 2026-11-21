@@ -5,16 +5,20 @@ import { AppShell } from '../../../components/layout/AppShell';
 import { PageContainer } from '../../../components/layout/PageContainer';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
-import { useToastStore } from '../../../lib/store';
+import { Modal } from '../../../components/ui/Modal';
+import { useToastStore, useAuthStore, usePOSStore } from '../../../lib/store';
 import { 
   Settings, Save, RefreshCw, Sliders, ShieldCheck, 
-  Bell, Scan, AlertTriangle, Lock, Server, Cpu
+  Bell, Scan, AlertTriangle, Lock, Server, Cpu, Trash2, Database
 } from 'lucide-react';
 
 export default function SystemSettingsPage() {
   const { addToast } = useToastStore();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [clearModalOpen, setClearModalOpen] = useState(false);
   const [warehouses, setWarehouses] = useState<any[]>([]);
 
   const [form, setForm] = useState({
@@ -55,6 +59,32 @@ export default function SystemSettingsPage() {
 
   const handleChange = (field: string, val: any) => {
     setForm(prev => ({ ...prev, [field]: val }));
+  };
+
+  const handleClearDummyData = async () => {
+    setIsClearing(true);
+    try {
+      const res = await fetch('/api/system/clear-dummy-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: user?.email })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        usePOSStore.getState().clearAllPOSData();
+        addToast('success', 'Dummy Data Purged', 'All mock products, demo invoices, purchases, and expenses have been completely deleted.');
+        setClearModalOpen(false);
+        setTimeout(() => {
+          window.location.reload();
+        }, 700);
+      } else {
+        addToast('error', 'Error', data.error || 'Failed to clear dummy data.');
+      }
+    } catch {
+      addToast('error', 'Error', 'Failed to reach backend server.');
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -276,6 +306,40 @@ export default function SystemSettingsPage() {
               </div>
             </div>
 
+            {/* Production Reset & Dummy Data Purge Card */}
+            <div className="p-6 rounded-3xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/50 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-rose-200/60 dark:border-rose-900/40">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                      Database &amp; Dummy Data Clean Slate
+                      <Badge variant="destructive" className="text-[10px] py-0 px-2">Production Ready</Badge>
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Permanently wipe all demo products, sample sales, purchase orders, expenses, and quotations to start with a fresh clean business system.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setClearModalOpen(true)}
+                  disabled={isClearing}
+                  className="rounded-2xl font-bold h-10 px-5 flex items-center gap-2 shrink-0 cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>{isClearing ? 'Clearing Data...' : 'Clear All Dummy Data'}</span>
+                </Button>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                <span className="font-bold text-foreground">Note:</span> Your admin account credentials, custom users, business profile, and ERP 1-Year subscription license key will be safely preserved.
+              </div>
+            </div>
+
             {/* Bottom Save Action */}
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button
@@ -290,6 +354,54 @@ export default function SystemSettingsPage() {
             </div>
 
           </form>
+
+          {/* Clean Slate Confirmation Modal */}
+          <Modal
+            isOpen={clearModalOpen}
+            onClose={() => !isClearing && setClearModalOpen(false)}
+            title="Wipe & Reset All Dummy Data?"
+            size="md"
+            footer={
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setClearModalOpen(false)}
+                  disabled={isClearing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleClearDummyData}
+                  disabled={isClearing}
+                  className="flex items-center gap-2 font-bold"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>{isClearing ? 'Clearing Data...' : 'Yes, Wipe All Dummy Data'}</span>
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-4 py-1">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200">
+                <AlertTriangle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-1">
+                  <p className="font-bold">Are you sure you want to remove all dummy data?</p>
+                  <p className="text-muted-foreground dark:text-rose-300/80 leading-relaxed">
+                    This will permanently clear all demo products, dummy sales transactions, purchase orders, expenses, quotations, and dummy customers. The system will start fresh for your business.
+                  </p>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/70 text-xs space-y-2">
+                <p className="font-bold text-foreground">🛡 Safe &amp; Preserved Items:</p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px]">
+                  <li>Current Super Admin account &amp; custom registered staff</li>
+                  <li>ERP 1-Year subscription activation license</li>
+                  <li>Default POS Walk-In Customer &amp; store configuration</li>
+                </ul>
+              </div>
+            </div>
+          </Modal>
 
         </div>
       </PageContainer>

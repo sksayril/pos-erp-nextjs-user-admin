@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/db';
-import { PurchaseModel, ProductModel, SupplierModel } from '../../../lib/models';
+import { PurchaseModel, ProductModel, SupplierModel, shouldSeedData } from '../../../lib/models';
 
 export async function GET() {
   try {
     await connectDB();
     let purchases = await PurchaseModel.find({}).sort({ createdAt: -1 });
 
-    if (purchases.length === 0) {
+    if (purchases.length === 0 && (await shouldSeedData())) {
       const defaultPurchases = [
         {
           purchaseNumber: 'PUR-2026-001',

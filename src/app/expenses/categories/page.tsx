@@ -118,8 +118,6 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete category "${name}"?`)) return;
-
     try {
       const res = await fetch(`/api/expenses/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {

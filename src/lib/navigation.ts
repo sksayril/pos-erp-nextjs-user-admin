@@ -1,6 +1,6 @@
-import { 
-  LayoutDashboard, ShoppingCart, Package, ShoppingBag, 
-  CreditCard, FileText, ArrowLeftRight, Settings, Users, 
+import {
+  LayoutDashboard, ShoppingCart, Package, ShoppingBag,
+  CreditCard, FileText, ArrowLeftRight, Settings, Users,
   BarChart3, FileQuestion, UsersRound, CalendarDays, Wallet, ShieldCheck, Truck
 } from 'lucide-react';
 import React from 'react';

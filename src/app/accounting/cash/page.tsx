@@ -49,7 +49,7 @@ export default function CashJournalPage() {
         setCashAccount(cash || null);
       }
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve cash transactions from database.');
     } finally {
       setLoading(false);
     }

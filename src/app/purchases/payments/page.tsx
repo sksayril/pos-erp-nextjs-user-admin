@@ -93,7 +93,6 @@ export default function PurchasePaymentsPage() {
   };
 
   const handleDelete = async (id: string, payNum: string) => {
-    if (!confirm(`Are you sure you want to delete payment log "${payNum}"?`)) return;
     try {
       const res = await fetch(`/api/purchases/payments?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

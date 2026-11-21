@@ -87,7 +87,6 @@ export default function BrandsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete brand "${name}"?`)) return;
     try {
       const res = await fetch(`/api/products/brands?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

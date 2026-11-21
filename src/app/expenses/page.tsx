@@ -54,8 +54,6 @@ export default function ExpensesListPage() {
   }, []);
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete expense "${title}"?`)) return;
-
     try {
       const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
       if (res.ok) {

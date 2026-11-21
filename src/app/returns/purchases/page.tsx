@@ -164,8 +164,6 @@ export default function PurchaseReturnsPage() {
   };
 
   const handleDelete = async (id: string, returnNum: string) => {
-    if (!confirm(`Are you sure you want to delete purchase return ${returnNum}?`)) return;
-
     try {
       const res = await fetch(`/api/returns/purchases?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

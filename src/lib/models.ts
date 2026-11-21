@@ -704,10 +704,24 @@ const SystemSettingsSchema = new Schema({
   defaultWarehouse: { type: String, default: 'Main Central Warehouse' },
   defaultPaymentMethod: { type: String, default: 'Cash' },
   sessionTimeoutMinutes: { type: Number, default: 60 },
-  maintenanceMode: { type: Boolean, default: false }
+  maintenanceMode: { type: Boolean, default: false },
+  dummyDataCleared: { type: Boolean, default: false },
+  dummyDataClearedAt: { type: Date }
 }, { timestamps: true });
 
 export const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
+
+export async function shouldSeedData(): Promise<boolean> {
+  try {
+    const sys = await SystemSettingsModel.findOne();
+    if (sys && sys.dummyDataCleared) {
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}
 
 // --- BACKUP HISTORY SCHEMA ---
 const BackupHistorySchema = new Schema({

@@ -96,7 +96,6 @@ export default function StockAdjustmentPage() {
   };
 
   const handleDelete = async (id: string, adjNum: string) => {
-    if (!confirm(`Are you sure you want to delete adjustment log "${adjNum}"?`)) return;
     try {
       const res = await fetch(`/api/products/adjustment?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

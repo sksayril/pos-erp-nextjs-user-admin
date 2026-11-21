@@ -85,7 +85,6 @@ export default function QuotationDetailPage() {
 
   const handleDelete = async () => {
     if (!quote) return;
-    if (!confirm(`Are you sure you want to delete quotation ${quote.quotationNumber}?`)) return;
 
     try {
       const res = await fetch(`/api/quotations/${quote._id}`, { method: 'DELETE' });

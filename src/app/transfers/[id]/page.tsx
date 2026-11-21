@@ -85,7 +85,6 @@ export default function TransferDetailPage() {
 
   const handleDelete = async () => {
     if (!transfer) return;
-    if (!confirm(`Are you sure you want to delete transfer ${transfer.transferNumber}?`)) return;
 
     try {
       const res = await fetch(`/api/transfers/${transfer._id}`, { method: 'DELETE' });

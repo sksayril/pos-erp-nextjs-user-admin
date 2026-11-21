@@ -44,8 +44,6 @@ export default function TransfersListPage() {
   }, []);
 
   const handleDelete = async (id: string, transferNum: string) => {
-    if (!confirm(`Are you sure you want to delete transfer record ${transferNum}?`)) return;
-
     try {
       const res = await fetch(`/api/transfers/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -65,8 +63,6 @@ export default function TransfersListPage() {
       addToast('info', 'Already Completed', 'This stock transfer is already marked as received.');
       return;
     }
-
-    if (!confirm(`Confirm receipt of ${transfer.transferNumber} at "${transfer.toWarehouseName}"?`)) return;
 
     try {
       setIsReceiving(true);

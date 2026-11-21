@@ -91,7 +91,6 @@ export default function DepartmentsPage() {
 
   // Delete Department
   const handleDelete = async (dep: any) => {
-    if (!confirm(`Are you sure you want to delete ${dep.name}?`)) return;
     try {
       const res = await fetch(`/api/hrm/departments?id=${dep._id}`, { method: 'DELETE' });
       if (res.ok) {

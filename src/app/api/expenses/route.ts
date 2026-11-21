@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '../../../lib/db';
-import { ExpenseModel, ExpenseCategoryModel } from '../../../lib/models';
+import { ExpenseModel, ExpenseCategoryModel, shouldSeedData } from '../../../lib/models';
 
 export async function GET(req: Request) {
   try {
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     let expenses = await ExpenseModel.find(query).sort({ createdAt: -1 });
 
-    if (expenses.length === 0 && Object.keys(query).length === 0) {
+    if (expenses.length === 0 && Object.keys(query).length === 0 && (await shouldSeedData())) {
       const defaultExpenses = [
         {
           expenseNumber: 'EXP-2026-001',

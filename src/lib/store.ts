@@ -297,6 +297,16 @@ export const useToastStore = create<ToastState>((set) => ({
   }))
 }));
 
+// Global Toast helper accessible everywhere (components, utilities, event handlers)
+export const showToast = {
+  success: (title: string, description?: string) => useToastStore.getState().addToast('success', title, description),
+  error: (title: string, description?: string) => useToastStore.getState().addToast('error', title, description),
+  warning: (title: string, description?: string) => useToastStore.getState().addToast('warning', title, description),
+  info: (title: string, description?: string) => useToastStore.getState().addToast('info', title, description),
+};
+
+export const toast = showToast;
+
 // --- POS STORE ---
 export interface HeldBill {
   id: string;
@@ -343,6 +353,10 @@ interface POSState {
   
   // Checkout
   checkout: (paymentMethod: Sale['paymentMethod'], paidAmount: number) => Sale | null;
+  
+  // Data Reset & Dynamic Sync
+  clearAllPOSData: () => void;
+  setRecentSales: (sales: Sale[]) => void;
 }
 
 export const usePOSStore = create<POSState>((set, get) => ({
@@ -516,7 +530,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
     clearCart();
     
     return newSale;
-  }
+  },
+  
+  clearAllPOSData: () => set({ cart: [], heldBills: [], recentSales: [] }),
+  setRecentSales: (sales: Sale[]) => set({ recentSales: sales })
 }));
 
 // --- PERMISSIONS STORE ---

@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useSubscriptionStore, useToastStore, useAuthStore } from '../../lib/store';
-import { ShieldCheck, Zap, Lock, Key, Copy, CheckCircle2, Sparkles, CreditCard, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Zap, Lock, Key, Copy, CheckCircle2, Sparkles, CreditCard, AlertCircle, ExternalLink } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -41,6 +42,7 @@ export const SubscriptionModal = () => {
   };
 
   const handleRazorpayPayment = async () => {
+    if (loading) return;
     setLoading(true);
     setKeyError('');
     try {
@@ -59,7 +61,6 @@ export const SubscriptionModal = () => {
         currency: 'INR',
         name: 'POS ERP Suite',
         description: '1-Year Full Enterprise ERP License Subscription',
-        image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
         order_id: orderData.orderId,
         handler: async function (response: any) {
           setLoading(true);
@@ -308,6 +309,16 @@ export const SubscriptionModal = () => {
                   {!loading && <Zap className="h-4 w-4" />}
                   Pay Rs. 5,999 via Razorpay &amp; Unlock Code
                 </Button>
+
+                <div className="pt-1 text-center">
+                  <Link
+                    href="/subscription"
+                    onClick={() => setSubscriptionModalOpen(false)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                  >
+                    Open Full Dedicated Payment Page <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
               </div>
             )}
 

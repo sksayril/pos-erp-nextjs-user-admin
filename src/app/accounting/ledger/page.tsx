@@ -34,7 +34,7 @@ export default function GeneralLedgerPage() {
       if (Array.isArray(accData)) setAccounts(accData);
       if (Array.isArray(txData)) setTransactions(txData);
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve general ledger data.');
     } finally {
       setLoading(false);
     }

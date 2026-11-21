@@ -37,7 +37,7 @@ export default function PayablesLedgerPage() {
       const resData = await res.json();
       setData(resData);
     } catch (err) {
-      console.error(err);
+      addToast('error', 'Fetch Error', 'Failed to retrieve accounts payable records.');
     } finally {
       setLoading(false);
     }

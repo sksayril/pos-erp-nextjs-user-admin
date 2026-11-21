@@ -135,7 +135,6 @@ export default function PaymentMethodsPage() {
   };
 
   const handleDelete = async (m: any) => {
-    if (!confirm(`Are you sure you want to remove ${m.name}?`)) return;
     try {
       const res = await fetch(`/api/settings/payment-methods?id=${m._id}`, { method: 'DELETE' });
       if (res.ok) {

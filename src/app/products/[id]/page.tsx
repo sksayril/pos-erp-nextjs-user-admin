@@ -50,7 +50,7 @@ export default function ProductDetailPage() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!product || !confirm(`Are you sure you want to delete "${product.name}"?`)) return;
+    if (!product) return;
     try {
       const res = await fetch(`/api/products?id=${product._id}`, { method: 'DELETE' });
       if (res.ok) {

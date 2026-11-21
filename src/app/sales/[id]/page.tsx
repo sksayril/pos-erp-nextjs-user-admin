@@ -44,7 +44,7 @@ export default function SaleInvoiceDetailPage() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!sale || !confirm(`Are you sure you want to delete invoice "${sale.invoiceNumber}"?`)) return;
+    if (!sale) return;
     try {
       const res = await fetch(`/api/sales?id=${sale._id}`, { method: 'DELETE' });
       if (res.ok) {

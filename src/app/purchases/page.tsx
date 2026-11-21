@@ -59,7 +59,6 @@ export default function PurchasesListPage() {
   }, []);
 
   const handleDelete = async (id: string, purNo: string) => {
-    if (!confirm(`Are you sure you want to delete purchase record "${purNo}"?`)) return;
     try {
       const res = await fetch(`/api/purchases?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
